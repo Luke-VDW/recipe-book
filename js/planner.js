@@ -43,10 +43,10 @@ const Planner = (() => {
           <div class="meal-slot">
             <span class="meal-label">${MEAL_LABELS[meal]}</span>
             <select onchange="Planner.setSlot(${week},'${day}','${meal}',this.value)">
+              <option value="" ${!selected?'selected':''}>— none —</option>
               ${recipes.map(r =>
                 `<option value="${r.id}" ${selected===r.id?'selected':''}>${r.name}</option>`
               ).join('')}
-              <option value="" ${!selected?'selected':''}>— none —</option>
             </select>
           </div>`;
       }).join('');
@@ -104,6 +104,10 @@ const Planner = (() => {
       checked: false,
     }));
 
+    if (items.length === 0) {
+      App.toast('Meals planned but no ingredients found — add ingredients to your recipes.', 'warn');
+      return;
+    }
     Data.setShoppingList(items);
     App.toast(`Shopping list generated (${items.length} items) ✓`);
     App.nav('shopping', document.querySelector('[data-view="shopping"]'));

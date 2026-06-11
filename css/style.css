@@ -33,10 +33,10 @@ html, body {
 /* ── TOP BAR ── */
 #topbar {
   position: fixed; top: 0; left: 0; right: 0;
-  height: var(--top-h);
+  height: calc(var(--top-h) + env(safe-area-inset-top));
   background: var(--dk-green);
   color: #fff;
-  display: flex; align-items: center; padding: 0 12px;
+  display: flex; align-items: flex-end; padding: 0 12px 10px;
   z-index: 100;
   gap: 8px;
   padding-top: env(safe-area-inset-top);
@@ -54,8 +54,8 @@ html, body {
 /* ── MAIN SCROLL AREA ── */
 #main {
   position: fixed;
-  top: var(--top-h);
-  bottom: var(--nav-h);
+  top: calc(var(--top-h) + env(safe-area-inset-top));
+  bottom: calc(var(--nav-h) + env(safe-area-inset-bottom));
   left: 0; right: 0;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
@@ -68,10 +68,11 @@ html, body {
 /* ── BOTTOM NAV ── */
 #bottom-nav {
   position: fixed; bottom: 0; left: 0; right: 0;
-  height: var(--nav-h);
+  height: calc(var(--nav-h) + env(safe-area-inset-bottom));
   background: var(--surface);
   border-top: 1px solid var(--border);
   display: flex;
+  align-items: flex-start;
   padding-bottom: env(safe-area-inset-bottom);
   z-index: 100;
 }
@@ -169,7 +170,7 @@ html, body {
 
 /* ── FAB ── */
 .fab {
-  position: fixed; bottom: calc(var(--nav-h) + 16px); right: 16px;
+  position: fixed; bottom: calc(var(--nav-h) + env(safe-area-inset-bottom) + 16px); right: 16px;
   width: 52px; height: 52px; border-radius: 50%;
   background: var(--dk-green); color: #fff;
   font-size: 1.6rem; border: none; cursor: pointer;
@@ -364,10 +365,94 @@ html, body {
 .empty-state .emoji { font-size: 2.5rem; display: block; margin-bottom: 8px; }
 .divider { height: 1px; background: var(--border); margin: 16px 0; }
 
-/* ── RESPONSIVE (wider screens) ── */
-@media (min-width: 480px) {
-  #main, #topbar, #bottom-nav { max-width: 480px; margin: 0 auto; left: 50%; right: auto; transform: translateX(-50%); }
-  #topbar { left: 50%; right: auto; width: 480px; }
-  #bottom-nav { left: 50%; right: auto; width: 480px; }
-  .fab { right: calc(50% - 240px + 16px); }
+/* ── RESPONSIVE: tablet — centre a phone-width panel ── */
+@media (min-width: 480px) and (max-width: 899px) {
+  #topbar        { left: 50%; right: auto; width: 480px; transform: translateX(-50%); }
+  #bottom-nav    { left: 50%; right: auto; width: 480px; transform: translateX(-50%); }
+  #main          { left: 50%; right: auto; width: 480px; transform: translateX(-50%); }
+  .fab           { right: calc(50% - 240px + 16px); }
+}
+
+/* ── RESPONSIVE: desktop — sidebar nav ── */
+@media (min-width: 900px) {
+  :root { --sidebar-w: 220px; }
+
+  /* Full-width top bar */
+  #topbar {
+    left: 0; right: 0; width: 100%; transform: none;
+    padding-left: calc(var(--sidebar-w) + 16px);
+  }
+
+  /* Left sidebar replaces bottom nav */
+  #bottom-nav {
+    left: 0; top: calc(var(--top-h) + env(safe-area-inset-top));
+    right: auto; bottom: 0;
+    width: var(--sidebar-w);
+    height: auto;
+    transform: none;
+    flex-direction: column;
+    justify-content: flex-start;
+    align-items: stretch;
+    padding: 12px 0 0;
+    border-top: none;
+    border-right: 1px solid var(--border);
+  }
+  .nav-btn {
+    flex-direction: row;
+    justify-content: flex-start;
+    padding: 13px 20px;
+    gap: 14px;
+    border-radius: 0;
+    margin: 0;
+    width: 100%;
+    font-size: 0.9rem;
+  }
+  .nav-icon  { font-size: 1.1rem; }
+  .nav-label { font-size: 0.88rem; letter-spacing: 0; font-weight: 600; }
+  .nav-btn.active { background: var(--lt-green); color: var(--dk-green); }
+
+  /* Main content sits to the right of the sidebar */
+  #main {
+    left: var(--sidebar-w);
+    right: 0;
+    bottom: 0;
+    width: auto;
+    transform: none;
+    max-width: none;
+  }
+
+  /* Wider content with comfortable padding */
+  .view { padding: 20px 32px 32px; }
+
+  /* FAB clear of sidebar */
+  .fab {
+    right: 28px;
+    bottom: 28px;
+  }
+
+  /* Centre modals like a dialog, not a bottom sheet */
+  #modal-overlay {
+    align-items: center;
+    justify-content: center;
+  }
+  #modal-box {
+    width: 560px;
+    max-height: 85vh;
+    border-radius: 20px;
+  }
+
+  /* Recipe list as a two-column grid */
+  .card-list {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+  }
+
+  /* Planner grid — 7 days side-by-side */
+  #planner-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 10px;
+  }
+  #planner-grid .planner-day { margin-bottom: 0; }
 }
