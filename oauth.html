@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html>
+<head><title>Connecting…</title></head>
+<body>
+<p>Connecting to Google Drive…</p>
+<script>
+  // Parse access token from URL hash after Google OAuth redirect
+  const hash = window.location.hash.substring(1);
+  const params = new URLSearchParams(hash);
+  const token = params.get('access_token');
+  if (token && window.opener) {
+    window.opener.postMessage({ type: 'oauth_token', token }, '*');
+    document.body.innerHTML = '<p>Connected! This window will close.</p>';
+    setTimeout(() => window.close(), 1500);
+  } else {
+    document.body.innerHTML = '<p>Connection failed. Please close this window and try again.</p>';
+  }
+</script>
+</body>
+</html>

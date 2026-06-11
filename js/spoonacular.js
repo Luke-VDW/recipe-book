@@ -1,0 +1,153 @@
+/* ══════════════════════════════════════
+   spoonacular.js — Recipe import
+   ══════════════════════════════════════ */
+
+const Importer = (() => {
+
+  const BASE = 'https://api.spoonacular.com';
+
+  function getKey() {
+    return localStorage.getItem('rb_spoon_key') || '';
+  }
+
+  const UNIT_NORM = {
+    tablespoons:'tbsp', tablespoon:'tbsp', tbsps:'tbsp',
+    teaspoons:'tsp', teaspoon:'tsp', tsps:'tsp',
+    cups:'cup', cloves:'clove', pieces:'piece',
+    pinches:'pinch', pounds:'lb', ounces:'oz',
+    grams:'g', kilograms:'kg', milliliters:'ml', liters:'l',
+    '':'',
+  };
+
+  function normaliseUnit(u) {
+    if (!u) return '';
+    return UNIT_NORM[u.toLowerCase()] || u.toLowerCase();
+  }
+
+  function roundQty(q) {
+    if (!q) return 0;
+    if (q >= 500) return Math.round(q);
+    if (q >= 50)  return Math.round(q / 5) * 5;
+    if (q >= 10)  return Math.round(q * 2) / 2;
+    if (q >= 1)   return Math.round(q * 4) / 4;
+    return Math.round(q * 8) / 8;
+  }
+
+  async function search() {
+    const key = getKey();
+    const notice = document.getElementById('import-key-notice');
+    if (!key) {
+      notice && notice.classList.remove('hidden');
+      return;
+    }
+    notice && notice.classList.add('hidden');
+
+    const q = document.getElementById('import-search').value.trim();
+    if (!q) return;
+
+    const resultsEl = document.getElementById('import-results');
+    resultsEl.innerHTML = '<div class="empty-state">Searching…</div>';
+
+    try {
+      const res = await fetch(
+        `${BASE}/recipes/complexSearch?query=${encodeURIComponent(q)}&number=10&addRecipeInformation=false&apiKey=${key}`
+      );
+      if (!res.ok) throw new Error('API error ' + res.status);
+      const data = await res.json();
+
+      if (!data.results || data.results.length === 0) {
+        resultsEl.innerHTML = '<div class="empty-state">No results found.</div>';
+        return;
+      }
+
+      resultsEl.innerHTML = data.results.map(r => `
+        <div class="import-card">
+          ${r.image ? `<img src="${r.image}" alt="${r.title}" loading="lazy" />` : ''}
+          <div class="import-card-body">
+            <h4>${r.title}</h4>
+            <div class="meta">${r.readyInMinutes ? `⏱ ${r.readyInMinutes}m` : ''} ${r.servings ? `· ${r.servings} servings` : ''}</div>
+            <button class="btn-primary" onclick="Importer.importRecipe(${r.id}, '${r.title.replace(/'/g,"\\'")}')">＋ Import</button>
+          </div>
+        </div>`
+      ).join('');
+    } catch(err) {
+      resultsEl.innerHTML = `<div class="empty-state">Error: ${err.message}</div>`;
+    }
+  }
+
+  async function importRecipe(id, title) {
+    const key = getKey();
+    if (!key) return;
+
+    App.toast('Importing…', 'info');
+    try {
+      const res = await fetch(`${BASE}/recipes/${id}/information?apiKey=${key}`);
+      if (!res.ok) throw new Error('API error ' + res.status);
+      const d = await res.json();
+
+      // Build ingredients string
+      const ingredients = (d.extendedIngredients || []).map(i => {
+        const qty  = roundQty(i.amount || 0);
+        const unit = normaliseUnit(i.unit || '');
+        const name = (i.nameClean || i.name || '').trim();
+        if (qty && unit) return `${qty}${unit} ${name}`;
+        if (qty)         return `${qty} ${name}`;
+        return name;
+      }).filter(Boolean).join('; ');
+
+      // Build method string
+      let method = '';
+      if (d.analyzedInstructions && d.analyzedInstructions.length > 0) {
+        method = d.analyzedInstructions[0].steps
+          .map((s, i) => `${i+1}. ${s.step}`)
+          .join('\n');
+      } else if (d.instructions) {
+        method = d.instructions.replace(/<[^>]+>/g, '');
+      }
+
+      // Determine category
+      const dishTypes = (d.dishTypes || []).map(t => t.toLowerCase());
+      let category = 'Dinner';
+      if (dishTypes.includes('breakfast') || dishTypes.includes('brunch')) category = 'Breakfast';
+      else if (dishTypes.includes('lunch') || dishTypes.includes('salad'))  category = 'Lunch';
+      else if (dishTypes.includes('dessert') || dishTypes.includes('sweet')) category = 'Dessert';
+      else if (dishTypes.includes('snack') || dishTypes.includes('appetizer')) category = 'Snack';
+      else if (dishTypes.includes('soup'))  category = 'Soup';
+      else if (dishTypes.includes('side dish')) category = 'Side';
+
+      // Tags from diets + cuisines
+      const tags = [...(d.cuisines || []), ...(d.diets || [])]
+        .map(t => t.charAt(0).toUpperCase() + t.slice(1)).slice(0, 5).join(', ');
+
+      const recipe = {
+        name: d.title,
+        category,
+        servings: d.servings || 2,
+        prepMins: d.preparationMinutes > 0 ? d.preparationMinutes : Math.round((d.readyInMinutes || 0) * 0.3),
+        cookMins: d.cookingMinutes > 0 ? d.cookingMinutes : Math.round((d.readyInMinutes || 0) * 0.7),
+        ingredients,
+        method,
+        tags,
+        source: d.sourceUrl || d.spoonacularSourceUrl || '',
+      };
+
+      Data.addRecipe(recipe);
+      Recipes.render();
+      App.toast(`"${d.title}" imported ✓`);
+    } catch(err) {
+      App.toast('Import failed: ' + err.message, 'error');
+    }
+  }
+
+  // Allow pressing Enter in search box
+  function init() {
+    const input = document.getElementById('import-search');
+    if (input) {
+      input.addEventListener('keydown', e => {
+        if (e.key === 'Enter') search();
+      });
+    }
+  }
+
+  return { search, importRecipe, init, getKey };
+})();
