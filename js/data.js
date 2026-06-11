@@ -114,7 +114,7 @@ const Data = (() => {
       setClientId(clientId.trim());
     }
     // Open OAuth popup
-    const redirectUri = window.location.href.split('?')[0].replace(/index\.html$/, '') + 'oauth.html';
+    const redirectUri = window.location.href.split('?')[0].split('#')[0].replace(/index\.html$/, '') + 'oauth.html';
     const scope = encodeURIComponent('https://www.googleapis.com/auth/drive.file');
     const url = `https://accounts.google.com/o/oauth2/v2/auth?` +
       `client_id=${encodeURIComponent(clientId)}&redirect_uri=${encodeURIComponent(redirectUri)}` +
