@@ -171,6 +171,15 @@ body {
 .detail-actions {
   display: flex; gap: 8px; flex-wrap: wrap; margin: 16px 0;
 }
+.servings-stepper { display: inline-flex; align-items: center; gap: 4px; }
+.stepper-btn {
+  background: var(--lt-green); border: 1px solid var(--border);
+  border-radius: 4px; width: 22px; height: 22px;
+  font-size: .85rem; font-weight: 700; cursor: pointer;
+  display: inline-flex; align-items: center; justify-content: center;
+  color: var(--dk-green); line-height: 1; flex-shrink: 0;
+}
+.stepper-btn:active { background: var(--accent); color: #fff; }
 
 /* ── FAB ── */
 .fab {
