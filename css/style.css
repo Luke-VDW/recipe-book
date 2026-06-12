@@ -266,8 +266,9 @@ body {
 }
 .shop-item input[type="checkbox"] { width: 18px; height: 18px; accent-color: var(--dk-green); flex-shrink: 0; }
 .shop-item.checked .shop-item-name { text-decoration: line-through; color: var(--text-muted); }
-.shop-item-name { flex: 1; font-size: .95rem; }
-.shop-item-qty { font-size: .82rem; color: var(--dk-green); font-weight: 600; }
+.shop-item-main { flex: 1; min-width: 0; }
+.shop-item-name { font-size: .95rem; }
+.shop-item-source { font-size: .72rem; color: var(--text-muted); margin-top: 2px; }
 
 /* ── SETTINGS ── */
 .settings-group {

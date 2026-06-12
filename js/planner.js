@@ -68,7 +68,6 @@ const Planner = (() => {
     const wk     = plan['week' + _currentWeek] || {};
     const recipes = Data.getRecipes();
 
-    // Collect all recipe IDs used this week (deduplicated)
     const usedIds = new Set();
     Data.DAYS.forEach(d => {
       Data.MEALS.forEach(m => {
@@ -82,17 +81,17 @@ const Planner = (() => {
       return;
     }
 
-    // Aggregate ingredients
-    const agg = {}; // key: "name|unit" → { name, unit, qty, recipes }
+    const agg = {}; // key: "name|unit" → { name, unit, qty, recipes, sources }
     usedIds.forEach(id => {
       const r = Data.getRecipeById(id);
       if (!r) return;
       const ings = Recipes.parseIngredients(r.ingredients);
       ings.forEach(i => {
         const key = `${i.name.toLowerCase()}|${i.unit}`;
-        if (!agg[key]) agg[key] = { name: i.name, unit: i.unit, qty: 0, recipes: [] };
+        if (!agg[key]) agg[key] = { name: i.name, unit: i.unit, qty: 0, recipes: [], sources: [] };
         agg[key].qty += parseFloat(i.qty) || 0;
         agg[key].recipes.push(r.name);
+        agg[key].sources.push({ recipe: r.name, qty: parseFloat(i.qty) || 0, unit: i.unit });
       });
     });
 
@@ -101,6 +100,7 @@ const Planner = (() => {
       unit: i.unit,
       qty: i.qty > 0 ? i.qty : '',
       recipes: [...new Set(i.recipes)].join(', '),
+      sources: i.sources,
       checked: false,
     }));
 

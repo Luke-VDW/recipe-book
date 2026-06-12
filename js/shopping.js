@@ -46,7 +46,6 @@ const Shopping = (() => {
       return;
     }
 
-    // Group by category
     const groups = {};
     items.forEach((item, idx) => {
       const cat = guessCategory(item.name);
@@ -62,12 +61,23 @@ const Shopping = (() => {
       const rows = catItems.map(item => {
         const qty = fmtQty(item.qty);
         const label = qty ? `${qty}${item.unit ? ' ' + item.unit : ''} ${item.name}` : item.name;
+
+        let sourceHtml = '';
+        if (item.sources && item.sources.length > 1) {
+          const sourceText = item.sources
+            .map(s => `${s.recipe}${s.qty ? ' ' + fmtQty(s.qty) + (s.unit || '') : ''}`)
+            .join(' · ');
+          sourceHtml = `<div class="shop-item-source">${sourceText}</div>`;
+        }
+
         return `
           <div class="shop-item ${item.checked ? 'checked' : ''}" id="shop-item-${item._idx}">
             <input type="checkbox" ${item.checked ? 'checked' : ''}
               onchange="Shopping.toggle(${item._idx})" />
-            <span class="shop-item-name">${label}</span>
-            ${item.recipes ? `<span class="shop-item-qty" title="${item.recipes}">•</span>` : ''}
+            <div class="shop-item-main">
+              <span class="shop-item-name">${label}</span>
+              ${sourceHtml}
+            </div>
           </div>`;
       }).join('');
       return `
