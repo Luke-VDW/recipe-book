@@ -85,17 +85,20 @@ const Importer = (() => {
       if (!res.ok) throw new Error('API error ' + res.status);
       const d = await res.json();
 
-      // Build ingredients string
+      // Build ingredients string — prefer metric measures when available
       const ingredients = (d.extendedIngredients || []).map(i => {
-        const qty  = roundQty(i.amount || 0);
-        const unit = normaliseUnit(i.unit || '');
+        const metric = i.measures?.metric;
+        const rawQty  = metric?.amount ?? i.amount ?? 0;
+        const rawUnit = metric?.unitShort ?? i.unit ?? '';
+        const qty  = roundQty(rawQty);
+        const unit = normaliseUnit(rawUnit);
         const name = (i.nameClean || i.name || '').trim();
         if (qty && unit) return `${qty}${unit} ${name}`;
         if (qty)         return `${qty} ${name}`;
         return name;
       }).filter(Boolean).join('; ');
 
-      // Build method string
+      // Build method string, then convert any remaining °F to °C
       let method = '';
       if (d.analyzedInstructions && d.analyzedInstructions.length > 0) {
         method = d.analyzedInstructions[0].steps
@@ -104,6 +107,9 @@ const Importer = (() => {
       } else if (d.instructions) {
         method = d.instructions.replace(/<[^>]+>/g, '');
       }
+      method = method
+        .replace(/(\d+(?:\.\d+)?)\s*°\s*F\b/g, (_, f) => `${Math.round((+f-32)*5/9)}°C`)
+        .replace(/(\d+(?:\.\d+)?)\s*degrees?\s+Fahrenheit/gi, (_, f) => `${Math.round((+f-32)*5/9)}°C`);
 
       // Determine category
       const dishTypes = (d.dishTypes || []).map(t => t.toLowerCase());

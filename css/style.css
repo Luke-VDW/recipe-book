@@ -22,7 +22,11 @@
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-html, body {
+html {
+  height: 100%;
+  background: var(--surface); /* fills bottom safe-area zone with white to match nav bar */
+}
+body {
   height: 100%;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   background: var(--bg);
@@ -226,9 +230,9 @@ html, body {
   text-transform: uppercase; letter-spacing: .06em; min-width: 58px;
 }
 .meal-slot select {
-  flex: 1; border: 1.5px solid var(--border); border-radius: 8px;
+  flex: 1; min-width: 0; border: 1.5px solid var(--border); border-radius: 8px;
   padding: 6px 8px; font-size: .85rem; background: var(--bg);
-  color: var(--text); outline: none;
+  color: var(--text); outline: none; max-width: 100%;
 }
 .meal-slot select:focus { border-color: var(--md-green); }
 .planner-actions { margin-top: 14px; display: flex; gap: 8px; }
@@ -451,8 +455,12 @@ html, body {
   /* Planner grid — 7 days side-by-side */
   #planner-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
     gap: 10px;
   }
-  #planner-grid .planner-day { margin-bottom: 0; }
+  #planner-grid .planner-day { margin-bottom: 0; overflow: visible; }
+  /* Give rounded corners to header/last-slot when overflow:visible removes clip */
+  #planner-grid .planner-day-header { border-radius: var(--radius) var(--radius) 0 0; }
+  #planner-grid .meal-slot:last-child { border-radius: 0 0 var(--radius) var(--radius); }
+  .meal-label { font-size: .65rem; }
 }
