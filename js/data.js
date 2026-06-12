@@ -179,27 +179,46 @@ const Data = (() => {
     try {
       const fileId = await _findOrCreateFile();
       const token = getToken();
-      // Download current Drive version
+
+      // Step 1: always pull from Drive
       const dl = await fetch(
         `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`,
         { headers: { Authorization: 'Bearer ' + token } }
       );
-      if (dl.ok) {
-        const remote = await dl.json();
-        // Merge: use whichever is newer
-        const localTime  = new Date(_db.lastUpdated || 0).getTime();
-        const remoteTime = new Date(remote.lastUpdated || 0).getTime();
-        if (remoteTime > localTime) {
-          _db = { ..._db, ...remote };
-          save();
-          App.toast('Synced from Drive ✓');
-          App.refresh();
-        } else {
-          // Upload local version
-          await _uploadToDrive(fileId, token);
-          App.toast('Saved to Drive ✓');
-        }
-      }
+      if (!dl.ok) throw new Error('Drive download failed: ' + dl.status);
+      const remote = await dl.json();
+
+      // Step 2: merge — add any recipes from Drive not already present locally
+      const localIds = new Set(_db.recipes.map(r => r.id));
+      const newRecipes = (remote.recipes || []).filter(r => !localIds.has(r.id));
+      if (newRecipes.length) _db.recipes = [..._db.recipes, ...newRecipes];
+
+      // Merge meal plan: fill local empty slots with Drive values
+      const WEEKS = ['week1','week2','week3','week4'];
+      WEEKS.forEach(w => {
+        const remoteWk = (remote.mealPlan || {})[w] || {};
+        DAYS.forEach(d => {
+          const remoteDay = remoteWk[d] || {};
+          MEALS.forEach(m => {
+            if (remoteDay[m] && !(_db.mealPlan[w]?.[d]?.[m])) {
+              _db.mealPlan[w] = _db.mealPlan[w] || {};
+              _db.mealPlan[w][d] = _db.mealPlan[w][d] || {};
+              _db.mealPlan[w][d][m] = remoteDay[m];
+            }
+          });
+        });
+      });
+
+      save();
+      if (newRecipes.length) App.refresh();
+
+      // Step 3: always push the merged result back to Drive
+      await _uploadToDrive(fileId, token);
+
+      const msg = newRecipes.length
+        ? `Synced — pulled ${newRecipes.length} new recipe${newRecipes.length > 1 ? 's' : ''} from Drive ✓`
+        : 'Synced with Drive ✓';
+      App.toast(msg);
     } catch(err) {
       console.error('Sync error', err);
       App.toast('Sync failed — check console', 'error');
@@ -210,7 +229,7 @@ const Data = (() => {
 
   async function _uploadToDrive(fileId, token) {
     const content = JSON.stringify(_db, null, 2);
-    await fetch(
+    const res = await fetch(
       `https://www.googleapis.com/upload/drive/v3/files/${fileId}?uploadType=media`,
       {
         method: 'PATCH',
@@ -221,6 +240,7 @@ const Data = (() => {
         body: content,
       }
     );
+    if (!res.ok) throw new Error('Drive upload failed: ' + res.status);
   }
 
   // ── Import / Export ─────────────────
