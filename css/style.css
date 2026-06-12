@@ -488,4 +488,14 @@ body {
   .planner-week-grid .planner-day-header { border-radius: var(--radius) var(--radius) 0 0; }
   .planner-week-grid .meal-slot:last-child { border-radius: 0 0 var(--radius) var(--radius); }
   .meal-label { font-size: .65rem; }
+  .btn-mini-generate {
+    float: right;
+    font-size: 0.75rem;
+    padding: 2px 8px;
+    background: var(--lt-green);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    cursor: pointer;
+    line-height: 1.4;
+  }
 }
