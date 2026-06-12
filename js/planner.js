@@ -6,6 +6,7 @@ const Planner = (() => {
 
   let _currentWeek = 1;
   let _recipeFilter = '';
+  let _filterTimer = null;
 
   const DAY_LABELS = {
     monday:'Monday', tuesday:'Tuesday', wednesday:'Wednesday',
@@ -19,6 +20,8 @@ const Planner = (() => {
     } else {
       showWeek(_currentWeek);
     }
+    const genBtn = document.getElementById('btn-generate-shopping');
+    if (genBtn) genBtn.textContent = `🛒 Generate Week ${_currentWeek} List`;
   }
 
   function showWeek(week, tabEl) {
@@ -31,6 +34,8 @@ const Planner = (() => {
     if (window.matchMedia('(min-width: 900px)').matches) {
       const section = document.getElementById('planner-week-' + week);
       if (section) section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      const genBtn = document.getElementById('btn-generate-shopping');
+      if (genBtn) genBtn.textContent = `🛒 Generate Week ${_currentWeek} List`;
       return;
     }
 
@@ -47,12 +52,16 @@ const Planner = (() => {
       const dayData = wk[day] || {};
       const slots = Data.MEALS.map(meal => {
         const selected = dayData[meal] || '';
+        const savedRecipe = selected ? Data.getRecipeById(selected) : null;
+        const slotRecipes = (savedRecipe && !recipes.find(r => r.id === selected))
+          ? [savedRecipe, ...recipes]
+          : recipes;
         return `
         <div class="meal-slot">
           <span class="meal-label">${MEAL_LABELS[meal]}</span>
           <select onchange="Planner.setSlot(${week},'${day}','${meal}',this.value)">
             <option value="" ${!selected ? 'selected' : ''}>— none —</option>
-            ${recipes.map(r =>
+            ${slotRecipes.map(r =>
               `<option value="${r.id}" ${selected === r.id ? 'selected' : ''}>${r.name}</option>`
             ).join('')}
           </select>
@@ -80,12 +89,16 @@ const Planner = (() => {
         const dayData = wk[day] || {};
         const slots = Data.MEALS.map(meal => {
           const selected = dayData[meal] || '';
+          const savedRecipe = selected ? Data.getRecipeById(selected) : null;
+          const slotRecipes = (savedRecipe && !recipes.find(r => r.id === selected))
+            ? [savedRecipe, ...recipes]
+            : recipes;
           return `
           <div class="meal-slot">
             <span class="meal-label">${MEAL_LABELS[meal]}</span>
             <select onchange="Planner.setSlot(${week},'${day}','${meal}',this.value)">
               <option value="" ${!selected ? 'selected' : ''}>— none —</option>
-              ${recipes.map(r =>
+              ${slotRecipes.map(r =>
                 `<option value="${r.id}" ${selected === r.id ? 'selected' : ''}>${r.name}</option>`
               ).join('')}
             </select>
@@ -106,8 +119,11 @@ const Planner = (() => {
   }
 
   function filterRecipes() {
-    _recipeFilter = (document.getElementById('planner-recipe-filter')?.value || '').trim();
-    render();
+    clearTimeout(_filterTimer);
+    _filterTimer = setTimeout(() => {
+      _recipeFilter = (document.getElementById('planner-recipe-filter')?.value || '').trim();
+      render();
+    }, 250);
   }
 
   function setSlot(week, day, meal, recipeId) {
@@ -161,6 +177,16 @@ const Planner = (() => {
     App.nav('shopping', document.querySelector('[data-view="shopping"]'));
     Shopping.render();
   }
+
+  let _resizeTimer = null;
+  window.addEventListener('resize', () => {
+    clearTimeout(_resizeTimer);
+    _resizeTimer = setTimeout(() => {
+      if (document.getElementById('view-planner')?.classList.contains('active')) {
+        render();
+      }
+    }, 200);
+  });
 
   return { render, showWeek, setSlot, generateShoppingList, filterRecipes };
 })();
