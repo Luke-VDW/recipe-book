@@ -7,7 +7,6 @@ const Recipes = (() => {
   let _activeId    = null;
   let _baseServings = 1;
   let _targetServings = 1;
-  let _planTargetId = null;
 
   // ── Ingredient parser ────────────────
   const UNITS = [
@@ -121,9 +120,9 @@ const Recipes = (() => {
   }
 
   function openDetail(id) {
-    _activeId = id;
     const r = Data.getRecipeById(id);
     if (!r) return;
+    _activeId = id;
     _baseServings   = r.servings || 1;
     _targetServings = r.servings || 1;
 
@@ -182,7 +181,6 @@ const Recipes = (() => {
   }
 
   function openAddToPlanModal(id) {
-    _planTargetId = id;
     const r = Data.getRecipeById(id);
     if (!r) return;
     document.getElementById('modal-content').innerHTML = `
@@ -223,7 +221,8 @@ const Recipes = (() => {
     const week = parseInt(document.getElementById('atp-week').value);
     const day  = document.getElementById('atp-day').value;
     const meal = document.getElementById('atp-meal').value;
-    Data.setMealSlot(week, day, meal, _planTargetId);
+    Planner.setSlot(week, day, meal, _activeId);
+    Planner.render();
     const dayLabel  = day.charAt(0).toUpperCase() + day.slice(1);
     const mealLabel = meal.charAt(0).toUpperCase() + meal.slice(1);
     App.closeModal();
