@@ -66,7 +66,6 @@ const Planner = (() => {
   function generateShoppingList() {
     const plan   = Data.getPlan();
     const wk     = plan['week' + _currentWeek] || {};
-    const recipes = Data.getRecipes();
 
     const usedIds = new Set();
     Data.DAYS.forEach(d => {
