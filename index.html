@@ -57,6 +57,10 @@
         <button class="week-tab" onclick="Planner.showWeek(3,this)">Week 3</button>
         <button class="week-tab" onclick="Planner.showWeek(4,this)">Week 4</button>
       </div>
+      <div class="planner-filter-bar">
+        <input id="planner-recipe-filter" type="search" placeholder="Filter recipes…"
+          oninput="Planner.filterRecipes()" />
+      </div>
       <div id="planner-grid"></div>
       <div class="planner-actions">
         <button class="btn-secondary" onclick="Planner.generateShoppingList()">🛒 Generate Shopping List</button>

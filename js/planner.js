@@ -5,6 +5,7 @@
 const Planner = (() => {
 
   let _currentWeek = 1;
+  let _recipeFilter = '';
 
   const DAY_LABELS = {
     monday:'Monday', tuesday:'Tuesday', wednesday:'Wednesday',
@@ -13,24 +14,31 @@ const Planner = (() => {
   const MEAL_LABELS = { breakfast:'Breakfast', lunch:'Lunch', dinner:'Dinner' };
 
   function render() {
-    showWeek(_currentWeek);
+    if (window.matchMedia('(min-width: 900px)').matches) {
+      _renderAll();
+    } else {
+      showWeek(_currentWeek);
+    }
   }
 
   function showWeek(week, tabEl) {
     _currentWeek = week;
-    // Update tab styles
     if (tabEl) {
       document.querySelectorAll('.week-tab').forEach(t => t.classList.remove('active'));
       tabEl.classList.add('active');
     }
 
+    if (window.matchMedia('(min-width: 900px)').matches) {
+      const section = document.getElementById('planner-week-' + week);
+      if (section) section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      return;
+    }
+
     const plan = Data.getPlan();
     const wk   = plan['week' + week] || {};
-    const recipes = Data.getRecipes();
-
-    // Build options HTML once
-    const recipeOptions = `<option value="">— none —</option>` +
-      recipes.map(r => `<option value="${r.id}">${r.name}</option>`).join('');
+    const recipes = Data.getRecipes().filter(r =>
+      !_recipeFilter || r.name.toLowerCase().includes(_recipeFilter.toLowerCase())
+    );
 
     const el = document.getElementById('planner-grid');
     if (!el) return;
@@ -40,23 +48,66 @@ const Planner = (() => {
       const slots = Data.MEALS.map(meal => {
         const selected = dayData[meal] || '';
         return `
+        <div class="meal-slot">
+          <span class="meal-label">${MEAL_LABELS[meal]}</span>
+          <select onchange="Planner.setSlot(${week},'${day}','${meal}',this.value)">
+            <option value="" ${!selected ? 'selected' : ''}>— none —</option>
+            ${recipes.map(r =>
+              `<option value="${r.id}" ${selected === r.id ? 'selected' : ''}>${r.name}</option>`
+            ).join('')}
+          </select>
+        </div>`;
+      }).join('');
+      return `
+      <div class="planner-day">
+        <div class="planner-day-header">${DAY_LABELS[day]}</div>
+        ${slots}
+      </div>`;
+    }).join('');
+  }
+
+  function _renderAll() {
+    const plan = Data.getPlan();
+    const recipes = Data.getRecipes().filter(r =>
+      !_recipeFilter || r.name.toLowerCase().includes(_recipeFilter.toLowerCase())
+    );
+    const el = document.getElementById('planner-grid');
+    if (!el) return;
+
+    el.innerHTML = [1, 2, 3, 4].map(week => {
+      const wk = plan['week' + week] || {};
+      const daysHtml = Data.DAYS.map(day => {
+        const dayData = wk[day] || {};
+        const slots = Data.MEALS.map(meal => {
+          const selected = dayData[meal] || '';
+          return `
           <div class="meal-slot">
             <span class="meal-label">${MEAL_LABELS[meal]}</span>
             <select onchange="Planner.setSlot(${week},'${day}','${meal}',this.value)">
-              <option value="" ${!selected?'selected':''}>— none —</option>
+              <option value="" ${!selected ? 'selected' : ''}>— none —</option>
               ${recipes.map(r =>
-                `<option value="${r.id}" ${selected===r.id?'selected':''}>${r.name}</option>`
+                `<option value="${r.id}" ${selected === r.id ? 'selected' : ''}>${r.name}</option>`
               ).join('')}
             </select>
           </div>`;
-      }).join('');
-
-      return `
+        }).join('');
+        return `
         <div class="planner-day">
           <div class="planner-day-header">${DAY_LABELS[day]}</div>
           ${slots}
         </div>`;
+      }).join('');
+      return `
+      <div class="planner-week-section" id="planner-week-${week}">
+        <div class="planner-week-header">Week ${week}</div>
+        <div class="planner-week-grid">${daysHtml}</div>
+      </div>`;
     }).join('');
+  }
+
+  function filterRecipes() {
+    _recipeFilter = (document.getElementById('planner-recipe-filter')?.value || '').trim();
+    render();
   }
 
   function setSlot(week, day, meal, recipeId) {
@@ -111,5 +162,5 @@ const Planner = (() => {
     Shopping.render();
   }
 
-  return { render, showWeek, setSlot, generateShoppingList };
+  return { render, showWeek, setSlot, generateShoppingList, filterRecipes };
 })();

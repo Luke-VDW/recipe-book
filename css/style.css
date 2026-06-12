@@ -245,6 +245,13 @@ body {
 }
 .meal-slot select:focus { border-color: var(--md-green); }
 .planner-actions { margin-top: 14px; display: flex; gap: 8px; }
+.planner-filter-bar { margin: 8px 0 10px; }
+.planner-filter-bar input {
+  width: 100%; padding: 8px 12px;
+  border: 1.5px solid var(--border); border-radius: var(--radius);
+  font-size: .9rem; background: var(--surface);
+}
+.planner-filter-bar input:focus { border-color: var(--md-green); outline: none; }
 
 /* ── SHOPPING LIST ── */
 .section-header {
@@ -463,15 +470,22 @@ body {
     gap: 12px;
   }
 
-  /* Planner grid — 7 days side-by-side */
-  #planner-grid {
+  /* Planner — all 4 weeks stacked vertically on desktop */
+  #planner-grid { display: block; }
+  .planner-week-section { margin-bottom: 2rem; }
+  .planner-week-header {
+    font-size: .8rem; font-weight: 700; letter-spacing: .06em;
+    text-transform: uppercase; color: var(--dk-green);
+    padding: 6px 0 4px; border-bottom: 2px solid var(--lt-green); margin-bottom: 8px;
+  }
+  .planner-week-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
     gap: 10px;
   }
-  #planner-grid .planner-day { margin-bottom: 0; overflow: visible; }
-  /* Give rounded corners to header/last-slot when overflow:visible removes clip */
-  #planner-grid .planner-day-header { border-radius: var(--radius) var(--radius) 0 0; }
-  #planner-grid .meal-slot:last-child { border-radius: 0 0 var(--radius) var(--radius); }
+  .planner-week-grid .planner-day { margin-bottom: 0; overflow: visible; }
+  /* Rounded corners when overflow:visible removes clip */
+  .planner-week-grid .planner-day-header { border-radius: var(--radius) var(--radius) 0 0; }
+  .planner-week-grid .meal-slot:last-child { border-radius: 0 0 var(--radius) var(--radius); }
   .meal-label { font-size: .65rem; }
 }
