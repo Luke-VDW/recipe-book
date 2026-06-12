@@ -65,7 +65,7 @@ const Shopping = (() => {
         let sourceHtml = '';
         if (item.sources && item.sources.length > 1) {
           const sourceText = item.sources
-            .map(s => `${s.recipe}${s.qty ? ' ' + fmtQty(s.qty) + (s.unit || '') : ''}`)
+            .map(s => `${s.recipe}${s.qty ? ' ' + fmtQty(s.qty) + (s.unit ? ' ' + s.unit : '') : ''}`)
             .join(' · ');
           sourceHtml = `<div class="shop-item-source">${sourceText}</div>`;
         }

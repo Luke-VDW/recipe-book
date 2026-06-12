@@ -81,16 +81,15 @@ const Planner = (() => {
       return;
     }
 
-    const agg = {}; // key: "name|unit" → { name, unit, qty, recipes, sources }
+    const agg = {}; // key: "name|unit" → { name, unit, qty, sources }
     usedIds.forEach(id => {
       const r = Data.getRecipeById(id);
       if (!r) return;
       const ings = Recipes.parseIngredients(r.ingredients);
       ings.forEach(i => {
         const key = `${i.name.toLowerCase()}|${i.unit}`;
-        if (!agg[key]) agg[key] = { name: i.name, unit: i.unit, qty: 0, recipes: [], sources: [] };
+        if (!agg[key]) agg[key] = { name: i.name, unit: i.unit, qty: 0, sources: [] };
         agg[key].qty += parseFloat(i.qty) || 0;
-        agg[key].recipes.push(r.name);
         agg[key].sources.push({ recipe: r.name, qty: parseFloat(i.qty) || 0, unit: i.unit });
       });
     });
@@ -99,7 +98,6 @@ const Planner = (() => {
       name: i.name,
       unit: i.unit,
       qty: i.qty > 0 ? i.qty : '',
-      recipes: [...new Set(i.recipes)].join(', '),
       sources: i.sources,
       checked: false,
     }));
