@@ -70,8 +70,6 @@ const Planner = (() => {
     if (_isDesktop()) {
       const section = document.getElementById('planner-week-' + week);
       if (section) section.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      const genBtn = document.getElementById('btn-generate-shopping');
-      if (genBtn) genBtn.textContent = `🛒 Generate Week ${_currentWeek} List`;
       return;
     }
 
