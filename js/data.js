@@ -13,6 +13,7 @@ const Data = (() => {
     pantry: [],
     shoppingList: [],
     priceBook: [],
+    spendLog: [],
   };
 
   const DAYS = ['monday','tuesday','wednesday','thursday','friday','saturday','sunday'];
@@ -31,6 +32,7 @@ const Data = (() => {
         });
       });
       if (!_db.priceBook) _db.priceBook = [];
+      if (!_db.spendLog) _db.spendLog = [];
       // Migrate v1 flat priceBook to v2 nested format — v1 data discarded intentionally, re-seed starter prices
       if (_db.priceBook.length > 0 && _db.priceBook[0].unit !== undefined) {
         _db.priceBook = [];
@@ -87,6 +89,19 @@ const Data = (() => {
     const exact = pantry.find(p => p.ingredient.toLowerCase() === lower);
     if (exact) return exact;
     return pantry.find(p => p.ingredient.toLowerCase().includes(lower)) || null;
+  }
+
+  function getSpendLog()        { return _db.spendLog || []; }
+
+  function logSpend(entry) {
+    if (!_db.spendLog) _db.spendLog = [];
+    _db.spendLog.push({ date: entry.date, total: entry.total, items: entry.items });
+    save();
+  }
+
+  function clearSpendLog() {
+    _db.spendLog = [];
+    save();
   }
 
   function getShoppingList(){ return _db.shoppingList || []; }
@@ -580,6 +595,7 @@ const Data = (() => {
     getPriceBook, setPriceEntry, removePriceEntry, removeIngredient,
     lookupPriceEntry, lookupPrice,
     setPantryItem, removePantryItem, clearPantryPerishables, getPantryItem,
+    getSpendLog, logSpend, clearSpendLog,
     DAYS, MEALS,
   };
 })();
