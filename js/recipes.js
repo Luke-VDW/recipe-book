@@ -421,14 +421,14 @@ const Recipes = (() => {
     let result = null;
     try {
       const ingredientList = ingredientsText.split(';').map(s => s.trim()).filter(Boolean).join('\n');
-      const formData = new FormData();
-      formData.append('ingredientList', ingredientList);
-      formData.append('servings', '1');
-      formData.append('includeNutrition', 'true');
+      const params = new URLSearchParams();
+      params.append('ingredientList', ingredientList);
+      params.append('servings', '1');
+      params.append('includeNutrition', 'true');
 
       const res = await fetch(
         `https://api.spoonacular.com/recipes/parseIngredients?apiKey=${encodeURIComponent(apiKey)}`,
-        { method: 'POST', body: formData }
+        { method: 'POST', body: params }
       );
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const parsed = await res.json();

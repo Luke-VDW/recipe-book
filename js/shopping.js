@@ -6,23 +6,42 @@ const Shopping = (() => {
 
   // Simple category guesser
   const CAT_MAP = {
-    'produce':    ['onion','garlic','tomato','potato','carrot','pepper','cucumber','spinach','lettuce',
-                   'mushroom','celery','zucchini','broccoli','cauliflower','pea','bean','corn',
-                   'avocado','lemon','lime','banana','apple','orange','berry','basil','parsley',
-                   'coriander','ginger','chilli','capsicum'],
-    'meat':       ['beef','chicken','pork','lamb','mince','steak','bacon','sausage','turkey','salmon',
-                   'tuna','prawn','shrimp','fish'],
-    'dairy':      ['milk','cream','butter','cheese','feta','yogurt','egg','cheddar','parmesan'],
-    'spices & herbs': ['cumin','cayenne','paprika','smoked paprika','oregano','cinnamon','nutmeg',
-                   'turmeric','cardamom','thyme','rosemary','bay leaf','chili powder','chilli powder',
-                   'garlic powder','onion powder','allspice','mixed spice','mustard seed','saffron',
-                   'star anise','fennel seed','curry powder','garam masala','five spice',
-                   'pepper flake','dried herb','ground spice','seasoning'],
-    'pantry':     ['oil','vinegar','sauce','paste','flour','sugar','salt','spice',
-                   'stock','broth','tin','can','coconut','oats','rice','bread','biscuit','cracker'],
-    'pasta & grains': ['pasta','spaghetti','penne','noodle','quinoa','couscous','polenta'],
+    'produce':    ['onion','shallot','leek','spring onion','scallion','garlic','tomato','potato',
+                   'sweet potato','yam','carrot','parsnip','turnip','beetroot','beet','pepper',
+                   'capsicum','cucumber','spinach','kale','lettuce','bok choy','pak choi',
+                   'mushroom','celery','zucchini','courgette','eggplant','aubergine','squash',
+                   'pumpkin','broccoli','cauliflower','asparagus','pea','bean','corn','avocado',
+                   'lemon','lime','banana','apple','orange','mango','pineapple','peach','pear',
+                   'plum','grape','cherry','berry','basil','parsley','coriander','herb','ginger',
+                   'chilli','chili','capsicum','fennel','radish','artichoke'],
+    'meat':       ['beef','chicken','pork','lamb','veal','duck','turkey','mince','steak','bacon',
+                   'sausage','salami','chorizo','ham','salmon','tuna','cod','snapper','bream',
+                   'tilapia','trout','prawn','shrimp','crab','scallop','mussel','anchovy','fish'],
+    'dairy':      ['milk','cream','butter','cheese','feta','yogurt','yoghurt','egg','cheddar',
+                   'parmesan','mozzarella','ricotta','brie','gouda','gruyere','sour cream',
+                   'creme fraiche','ghee','condensed milk','evaporated milk'],
+    'spices & herbs': ['cumin','cayenne','paprika','smoked paprika','chili flake','red pepper flake',
+                   'oregano','cinnamon','nutmeg','mace','turmeric','cardam','clove','thyme',
+                   'rosemary','sage','tarragon','marjoram','bay leaf','chili powder','chilli powder',
+                   'garlic powder','onion powder','allspice','mixed spice','pickling spice',
+                   'mustard seed','mustard powder','saffron','star anise','fennel seed','caraway',
+                   'coriander seed','ground coriander','curry powder','garam masala','tandoori',
+                   'five spice','ras el hanout','za\'atar','sumac','harissa','dried herb',
+                   'ground spice','spice blend','seasoning','black pepper','white pepper','peppercorn',
+                   'vanilla pod','vanilla bean','dried chilli','chilli flake','smoked salt',
+                   'celery salt','garlic salt'],
+    'pantry':     ['oil','vinegar','sauce','paste','flour','sugar','salt','spice','stock','broth',
+                   'tin','can','coconut','oats','rice','bread','biscuit','cracker','honey','syrup',
+                   'jam','pickle','olive','capers','tahini','miso','soy sauce','fish sauce',
+                   'oyster sauce','hoisin','worcestershire','hot sauce','sriracha','maple',
+                   'baking powder','baking soda','yeast','cornstarch','cornflour','lentil',
+                   'chickpea','kidney bean','black bean','dried fruit','raisin','sultana','nut',
+                   'walnut','almond','cashew','pistachio','peanut','sesame'],
+    'pasta & grains': ['pasta','spaghetti','penne','fettuccine','rigatoni','lasagne','noodle',
+                   'rice noodle','quinoa','couscous','polenta','bulgur','barley','farro'],
     'frozen':     ['frozen'],
-    'drinks':     ['water','juice','wine','beer','coffee','tea'],
+    'drinks':     ['water','juice','wine','beer','cider','spirits','coffee','tea','milk alternative',
+                   'oat milk','almond milk','coconut milk','soy milk'],
   };
 
   function guessCategory(name) {
@@ -67,19 +86,20 @@ const Shopping = (() => {
         const qty = fmtQty(item.qty);
         const label = qty ? `${qty}${item.unit ? ' ' + item.unit : ''} ${item.name}` : item.name;
 
-        let sourceHtml = '';
-        const showSources = item.sources && item.sources.length > 0 &&
+        const hasSources = item.sources && item.sources.length > 0 &&
           (item.sources.length > 1 || (item.sources[0] && item.sources[0].context));
-        if (showSources) {
-          const sourceText = item.sources
-            .map(s => {
-              let text = s.recipe;
-              if (s.qty) text += ' ' + fmtQty(s.qty) + (s.unit ? ' ' + s.unit : '');
-              if (s.context) text += ` (${s.context})`;
-              return text;
-            })
-            .join(' · ');
-          sourceHtml = `<div class="shop-item-source">${sourceText}</div>`;
+        let sourcesHtml = '';
+        if (hasSources) {
+          const rows = item.sources.map(s => {
+            const ctxParts = [];
+            if (s.qty) ctxParts.push(fmtQty(s.qty) + (s.unit ? ' ' + s.unit : ''));
+            if (s.context) ctxParts.push(s.context);
+            return `<div class="shop-source-row">
+              <span class="shop-source-recipe">${s.recipe}</span>
+              ${ctxParts.length ? `<span class="shop-source-ctx">${ctxParts.join(' · ')}</span>` : ''}
+            </div>`;
+          }).join('');
+          sourcesHtml = `<div id="shop-sources-${item._idx}" class="shop-item-sources hidden">${rows}</div>`;
         }
 
         return `
@@ -87,8 +107,11 @@ const Shopping = (() => {
             <input type="checkbox" ${item.checked ? 'checked' : ''}
               onchange="Shopping.toggle(${item._idx})" />
             <div class="shop-item-main">
-              <span class="shop-item-name">${label}</span>
-              ${sourceHtml}
+              <div class="shop-item-top">
+                <span class="shop-item-name">${label}</span>
+                ${hasSources ? `<button id="shop-src-btn-${item._idx}" class="shop-src-toggle" onclick="Shopping.toggleSources(${item._idx})">View recipes ▾</button>` : ''}
+              </div>
+              ${sourcesHtml}
             </div>
           </div>`;
       }).join('');
@@ -98,6 +121,14 @@ const Shopping = (() => {
           ${rows}
         </div>`;
     }).join('');
+  }
+
+  function toggleSources(idx) {
+    const sources = document.getElementById('shop-sources-' + idx);
+    const btn = document.getElementById('shop-src-btn-' + idx);
+    if (!sources) return;
+    const isHidden = sources.classList.toggle('hidden');
+    if (btn) btn.textContent = isHidden ? 'View recipes ▾' : 'Hide ▴';
   }
 
   function toggle(idx) {
@@ -115,5 +146,5 @@ const Shopping = (() => {
     App.toast('Checked items removed');
   }
 
-  return { render, toggle, clearChecked };
+  return { render, toggle, toggleSources, clearChecked };
 })();

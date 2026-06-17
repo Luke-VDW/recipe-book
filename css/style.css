@@ -245,8 +245,8 @@ body {
   font-weight: 700;
 }
 
-/* Hide meals-only controls when not on Meals tab */
-#view-planner:not(.meals-active) .planner-filter-bar,
+/* Hide controls when not on the relevant tab */
+#view-planner:not(.filter-active) .planner-filter-bar { display: none; }
 #view-planner:not(.meals-active) .planner-actions { display: none; }
 
 /* ── CALORIE SUMMARY TABLE ── */
@@ -377,10 +377,17 @@ body {
 }
 .shop-item input[type="checkbox"] { width: 18px; height: 18px; accent-color: var(--dk-green); flex-shrink: 0; }
 .shop-item.checked .shop-item-name { text-decoration: line-through; color: var(--text-muted); }
-.shop-item.checked .shop-item-source { opacity: 0.5; }
+.shop-item.checked .shop-item-sources { opacity: 0.5; }
 .shop-item-main { flex: 1; min-width: 0; }
+.shop-item-top { display: flex; align-items: center; gap: 8px; }
 .shop-item-name { font-size: .95rem; }
-.shop-item-source { font-size: .72rem; color: var(--text-muted); margin-top: 2px; }
+.shop-src-toggle { font-size: 0.72rem; color: var(--md-green); background: none; border: none; cursor: pointer; padding: 0; white-space: nowrap; flex-shrink: 0; }
+.shop-item-sources { margin-top: 6px; }
+.shop-item-sources.hidden { display: none; }
+.shop-source-row { display: flex; flex-direction: column; padding: 3px 0 3px 8px; border-left: 2px solid var(--lt-green); margin-bottom: 4px; }
+.shop-source-row:last-child { margin-bottom: 0; }
+.shop-source-recipe { font-size: 0.82rem; color: var(--text); }
+.shop-source-ctx { font-size: 0.74rem; color: var(--text-muted); }
 
 /* ── SETTINGS ── */
 .settings-group {

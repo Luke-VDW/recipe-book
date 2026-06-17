@@ -52,6 +52,7 @@ const Planner = (() => {
     );
     const plannerView = document.getElementById('view-planner');
     if (plannerView) plannerView.classList.toggle('meals-active', _currentTab === 'meals');
+    if (plannerView) plannerView.classList.toggle('filter-active', _currentTab === 'meals' || _currentTab === 'treats');
     const genBtn = document.getElementById('btn-generate-shopping');
     if (genBtn) genBtn.textContent = `🛒 Generate Week ${_currentWeek} List`;
     if (_currentTab === 'meals')   _renderMeals();
@@ -95,9 +96,11 @@ const Planner = (() => {
     const wk     = plan['week' + _currentWeek] || {};
     const treats = wk.treats || [];
 
+    const filterLower = _recipeFilter.toLowerCase();
     const rows = treats.map((t, i) => {
       const r = Data.getRecipeById(t.recipeId);
       if (!r) return '';
+      if (filterLower && !r.name.toLowerCase().includes(filterLower)) return '';
       const treatKcal = r.kcalTotal != null
         ? (r.kcalTotal * t.batches) + ' kcal'
         : '— kcal';
