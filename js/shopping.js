@@ -65,31 +65,48 @@ const Shopping = (() => {
   }
 
   function _renderPriceDisplay(idx, item) {
-    const entry = Data.lookupPriceEntry(item.name);
-    if (!entry) {
+    const card = Data.lookupPriceEntry(item.name);
+    if (!card || !card.prices || card.prices.length === 0) {
       return `<div class="shop-price-display" id="shop-price-${idx}">
-      <button class="shop-price-set" onclick="Shopping.editPrice(${idx})">+ Set price</button>
-    </div>`;
+        <button class="shop-price-set" onclick="Shopping.editPrice(${idx})">+ Set price</button>
+      </div>`;
     }
     const cost = Data.lookupPrice(item.name, item.qty, item.unit);
     const costHtml = cost != null
       ? `<span class="shop-price-cost">R ${cost.toFixed(2)}</span><span class="shop-price-sep">·</span>`
       : '';
-    const retailer = entry.retailer ? ` <span class="shop-price-retailer-tag">${_esc(entry.retailer)}</span>` : '';
+    // Show "avg" when multiple prices exist, else show single price with retailer
+    let perHtml;
+    if (card.prices.length > 1) {
+      // If all rows share the same unit, compute and display a true numeric average
+      const uniqueUnits = [...new Set(card.prices.map(p => p.unit))];
+      if (uniqueUnits.length === 1) {
+        const avgPrice = card.prices.reduce((s, p) => s + p.pricePerUnit, 0) / card.prices.length;
+        perHtml = `<span class="shop-price-per">avg R ${avgPrice.toFixed(2)}/${uniqueUnits[0]}</span>`;
+      } else {
+        perHtml = `<span class="shop-price-per">avg (${card.prices.length} prices)</span>`;
+      }
+    } else {
+      const p = card.prices[0];
+      const retailerHtml = p.retailer
+        ? ` <span class="shop-price-retailer-tag">${_esc(p.retailer)}</span>` : '';
+      perHtml = `<span class="shop-price-per">R ${p.pricePerUnit.toFixed(2)}/${p.unit}</span>${retailerHtml}`;
+    }
     return `<div class="shop-price-display" id="shop-price-${idx}">
-    ${costHtml}<span class="shop-price-per">R ${entry.pricePerUnit.toFixed(2)}/${entry.unit}</span>${retailer}
-    <button class="shop-price-edit-btn" onclick="Shopping.editPrice(${idx})" title="Edit price">✏</button>
-  </div>`;
+      ${costHtml}${perHtml}
+      <button class="shop-price-edit-btn" onclick="Shopping.editPrice(${idx})" title="Edit price">✏</button>
+    </div>`;
   }
 
   function editPrice(idx) {
     const items = Data.getShoppingList();
     const item = items[idx];
     if (!item) return;
-    const entry = Data.lookupPriceEntry(item.name) || {};
+    const card = Data.lookupPriceEntry(item.name);
+    const firstPrice = (card && card.prices && card.prices.length > 0) ? card.prices[0] : null;
     const units = ['g','100g','kg','ml','100ml','l','item','tsp','tbsp'];
     const unitOpts = units.map(u =>
-      `<option value="${u}" ${(entry.unit || 'item') === u ? 'selected' : ''}>${u}</option>`
+      `<option value="${u}" ${(firstPrice ? firstPrice.unit : 'item') === u ? 'selected' : ''}>${u}</option>`
     ).join('');
     const priceEl = document.getElementById('shop-price-' + idx);
     if (!priceEl) return;
@@ -97,11 +114,11 @@ const Shopping = (() => {
       <div class="shop-price-form">
         <span class="shop-pf-label">R</span>
         <input type="number" id="sp-price-${idx}" class="shop-pf-input"
-          step="0.01" min="0" value="${entry.pricePerUnit != null ? entry.pricePerUnit : ''}" placeholder="0.00" />
+          step="0.01" min="0" value="${firstPrice ? firstPrice.pricePerUnit : ''}" placeholder="0.00" />
         <span class="shop-pf-sep">per</span>
         <select id="sp-unit-${idx}" class="shop-pf-unit">${unitOpts}</select>
         <input type="text" id="sp-retailer-${idx}" class="shop-pf-retailer"
-          value="${_esc(entry.retailer)}" placeholder="Store" maxlength="20" />
+          value="${_esc(firstPrice ? (firstPrice.retailer || '') : '')}" placeholder="Store" maxlength="20" />
         <button class="btn-mini btn-mini-primary" onclick="Shopping.savePrice(${idx})">Save</button>
         <button class="btn-mini" onclick="Shopping.render()">✕</button>
       </div>`;
@@ -116,13 +133,7 @@ const Shopping = (() => {
     const unit = document.getElementById('sp-unit-' + idx)?.value || 'item';
     const retailer = (document.getElementById('sp-retailer-' + idx)?.value || '').trim();
     if (isNaN(price) || price < 0) { App.toast('Enter a valid price', 'warn'); return; }
-    Data.setPriceEntry({
-      ingredient: item.name.toLowerCase().trim(),
-      unit,
-      pricePerUnit: price,
-      retailer,
-      updatedDate: new Date().toISOString().slice(0, 10),
-    });
+    Data.setPriceEntry(item.name.toLowerCase().trim(), { unit, pricePerUnit: price, retailer });
     render();
     App.toast('Price saved ✓');
   }
