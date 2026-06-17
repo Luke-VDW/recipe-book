@@ -98,6 +98,24 @@ const Shopping = (() => {
     </div>`;
   }
 
+  function _renderPantryBadge(item) {
+    const pantryItem = Data.getPantryItem(item.name);
+    if (!pantryItem || pantryItem.qty <= 0) return '';
+    if (pantryItem.unit === item.unit) {
+      if (pantryItem.qty >= (item.qty || 0)) {
+        return `<div class="pantry-in-stock">✓ In pantry (${_fmtPantryQty(pantryItem.qty)} ${_esc(pantryItem.unit)})</div>`;
+      }
+      return `<div class="pantry-partial-stock">In pantry: ${_fmtPantryQty(pantryItem.qty)} ${_esc(pantryItem.unit)}</div>`;
+    }
+    return `<div class="pantry-partial-stock">In pantry: ${_fmtPantryQty(pantryItem.qty)} ${_esc(pantryItem.unit)}</div>`;
+  }
+
+  function _fmtPantryQty(q) {
+    const n = parseFloat(q);
+    if (isNaN(n)) return '0';
+    return n % 1 === 0 ? String(n) : n.toFixed(2).replace(/\.?0+$/, '');
+  }
+
   function editPrice(idx) {
     const items = Data.getShoppingList();
     const item = items[idx];
@@ -158,6 +176,17 @@ const Shopping = (() => {
   }
 
   function render() {
+    // Auto-tick items fully covered by pantry stock (same unit, sufficient qty)
+    const preItems = Data.getShoppingList();
+    preItems.forEach((item, idx) => {
+      if (item.checked) return;
+      const pantryItem = Data.getPantryItem(item.name);
+      if (!pantryItem || pantryItem.qty <= 0) return;
+      if (pantryItem.unit === item.unit && pantryItem.qty >= (item.qty || 0)) {
+        Data.toggleShoppingItem(idx);
+      }
+    });
+
     const items = Data.getShoppingList();
     const el = document.getElementById('shopping-list');
     if (!el) return;
@@ -208,6 +237,7 @@ const Shopping = (() => {
                 <span class="shop-item-name">${label}</span>
                 ${hasSources ? `<button id="shop-src-btn-${item._idx}" class="shop-src-toggle" onclick="Shopping.toggleSources(${item._idx})">View recipes ▾</button>` : ''}
               </div>
+              ${_renderPantryBadge(item)}
               ${_renderPriceDisplay(item._idx, item)}
               ${sourcesHtml}
             </div>
@@ -244,5 +274,45 @@ const Shopping = (() => {
     App.toast('Checked items removed');
   }
 
-  return { render, toggle, toggleSources, clearChecked, editPrice, savePrice };
+  function openLogPurchase() {
+    const items = Data.getShoppingList().filter(i => !i.checked);
+    if (items.length === 0) {
+      App.toast('Nothing to log — all items are already ticked', 'warn');
+      return;
+    }
+    const rows = items.map((item, i) => {
+      const qty = item.qty || 1;
+      return `
+        <div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border);">
+          <span style="flex:1;font-size:0.9rem;text-transform:capitalize">${_esc(item.name)}</span>
+          <input type="number" id="log-qty-${i}" step="0.1" min="0"
+            value="${qty}" style="width:60px;padding:4px;border:1px solid var(--border);border-radius:6px;" />
+          <span style="font-size:0.85rem;color:var(--text-muted)">${_esc(item.unit || '')}</span>
+        </div>`;
+    }).join('');
+    document.getElementById('modal-content').innerHTML = `
+      <h3>Log Purchase</h3>
+      <p style="font-size:0.85rem;color:var(--text-muted);margin-bottom:12px">Confirm quantities to add to pantry:</p>
+      <div>${rows}</div>
+      <div class="modal-actions" style="margin-top:16px">
+        <button class="btn-secondary" onclick="App.closeModal()">Cancel</button>
+        <button class="btn-primary" onclick="Shopping.confirmPurchase()">Confirm &amp; Update Pantry</button>
+      </div>`;
+    document.getElementById('modal-overlay').classList.remove('hidden');
+  }
+
+  function confirmPurchase() {
+    const items = Data.getShoppingList().filter(i => !i.checked);
+    items.forEach((item, i) => {
+      const qty = parseFloat(document.getElementById('log-qty-' + i)?.value) || 0;
+      if (qty > 0) {
+        Data.setPantryItem(item.name, { qty, unit: item.unit || 'item' });
+      }
+    });
+    App.closeModal();
+    App.toast('Pantry updated ✓');
+    render();
+  }
+
+  return { render, toggle, toggleSources, clearChecked, editPrice, savePrice, openLogPurchase, confirmPurchase };
 })();
