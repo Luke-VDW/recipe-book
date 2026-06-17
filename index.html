@@ -81,7 +81,10 @@
     <section id="view-shopping" class="view">
       <div class="section-header">
         <h2>Shopping List</h2>
-        <button class="btn-small" onclick="Shopping.clearChecked()">Clear checked</button>
+        <div class="section-header-actions">
+          <button class="btn-small" onclick="App.pushView('pricebook','Price Book'); PriceBook.render()">Price Book</button>
+          <button class="btn-small" onclick="Shopping.clearChecked()">Clear checked</button>
+        </div>
       </div>
       <div id="shopping-list"></div>
     </section>
@@ -115,6 +118,11 @@
         <p id="spoon-quota-display" class="hint"></p>
       </div>
       <div class="settings-group">
+        <h3>Price Book</h3>
+        <p class="hint">Store prices for ingredients to estimate weekly shopping costs.</p>
+        <button class="btn-secondary" onclick="App.pushView('pricebook','Price Book'); PriceBook.render()">Manage Price Book →</button>
+      </div>
+      <div class="settings-group">
         <h3>Data</h3>
         <button class="btn-secondary" onclick="Data.exportJSON()">⬇ Export JSON</button>
         <button class="btn-secondary" onclick="Data.importJSON()">⬆ Import JSON</button>
@@ -124,6 +132,19 @@
       <div class="settings-group">
         <p class="hint version">Recipe Book PWA v1.0</p>
       </div>
+    </section>
+
+    <!-- PRICE BOOK -->
+    <section id="view-pricebook" class="view">
+      <div class="section-header">
+        <h2>Price Book</h2>
+        <button class="btn-small" onclick="PriceBook.openAddForm()">＋ Add</button>
+      </div>
+      <div class="search-bar">
+        <input id="pb-search" type="search" placeholder="Search ingredients…"
+          oninput="PriceBook.filter()" />
+      </div>
+      <div id="pricebook-list"></div>
     </section>
 
   </main>
@@ -180,6 +201,7 @@
   <script src="js/planner.js"></script>
   <script src="js/shopping.js"></script>
   <script src="js/spoonacular.js"></script>
+  <script src="js/prices.js"></script>
   <script src="js/app.js"></script>
 </body>
 </html>
