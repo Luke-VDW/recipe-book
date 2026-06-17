@@ -48,6 +48,43 @@ const Data = (() => {
   function getRecipes()     { return _db.recipes || []; }
   function getPlan()        { return _db.mealPlan; }
   function getPantry()      { return _db.pantry || []; }
+
+  function setPantryItem(ingredientName, opts) {
+    if (!_db.pantry) _db.pantry = [];
+    const name = (ingredientName || '').toLowerCase().trim();
+    let item = _db.pantry.find(p => p.ingredient.toLowerCase() === name);
+    if (!item) {
+      item = { ingredient: name, qty: 0, unit: 'item', updatedDate: '', perishable: false };
+      _db.pantry.push(item);
+    }
+    item.qty = parseFloat(opts.qty) || 0;
+    item.unit = opts.unit || item.unit;
+    if (opts.perishable !== undefined) item.perishable = !!opts.perishable;
+    item.updatedDate = new Date().toISOString().slice(0, 10);
+    save();
+  }
+
+  function removePantryItem(ingredientName) {
+    if (!_db.pantry) return;
+    const name = (ingredientName || '').toLowerCase().trim();
+    _db.pantry = _db.pantry.filter(p => p.ingredient.toLowerCase() !== name);
+    save();
+  }
+
+  function clearPantryPerishables() {
+    if (!_db.pantry) return;
+    _db.pantry.forEach(p => { if (p.perishable) p.qty = 0; });
+    save();
+  }
+
+  function getPantryItem(name) {
+    const lower = (name || '').toLowerCase().trim();
+    const pantry = _db.pantry || [];
+    const exact = pantry.find(p => p.ingredient.toLowerCase() === lower);
+    if (exact) return exact;
+    return pantry.find(p => lower.includes(p.ingredient.toLowerCase())) || null;
+  }
+
   function getShoppingList(){ return _db.shoppingList || []; }
 
   function addRecipe(r) {
@@ -538,6 +575,7 @@ const Data = (() => {
     loadStarterData, loadStarterPrices, getClientId, setClientId,
     getPriceBook, setPriceEntry, removePriceEntry, removeIngredient,
     lookupPriceEntry, lookupPrice,
+    setPantryItem, removePantryItem, clearPantryPerishables, getPantryItem,
     DAYS, MEALS,
   };
 })();
