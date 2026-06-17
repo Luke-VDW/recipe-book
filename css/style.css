@@ -582,3 +582,159 @@ body {
   }
 
 }
+
+/* ── Shopping list price display ─────────────────────── */
+.shop-price-display {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  margin-top: 2px;
+  flex-wrap: wrap;
+}
+.shop-price-cost {
+  font-weight: 600;
+  color: var(--md-green);
+}
+.shop-price-sep { opacity: 0.5; }
+.shop-price-per { opacity: 0.8; }
+.shop-price-retailer-tag {
+  background: var(--lt-green);
+  color: var(--dk-green);
+  border-radius: 4px;
+  padding: 0 5px;
+  font-size: 0.72rem;
+  font-weight: 600;
+}
+.shop-price-edit-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0 2px;
+  font-size: 0.78rem;
+  opacity: 0.5;
+  line-height: 1;
+}
+.shop-price-edit-btn:hover { opacity: 1; }
+.shop-price-set {
+  background: none;
+  border: 1px dashed var(--text-muted);
+  border-radius: 4px;
+  padding: 1px 8px;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+.shop-price-set:hover { border-color: var(--md-green); color: var(--md-green); }
+
+/* Inline price edit form */
+.shop-price-form {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: wrap;
+  margin-top: 2px;
+}
+.shop-pf-label { font-size: 0.8rem; font-weight: 600; }
+.shop-pf-sep   { font-size: 0.78rem; opacity: 0.7; }
+.shop-pf-input {
+  width: 64px;
+  padding: 3px 6px;
+  font-size: 0.8rem;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+}
+.shop-pf-unit {
+  padding: 3px 4px;
+  font-size: 0.78rem;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+}
+.shop-pf-retailer {
+  width: 80px;
+  padding: 3px 6px;
+  font-size: 0.78rem;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+}
+
+/* Running total */
+.shop-total {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px;
+  margin-top: 8px;
+  background: var(--lt-green);
+  border-radius: 10px;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.shop-total-label { font-size: 0.88rem; color: var(--dk-green); font-weight: 600; }
+.shop-total-amount { font-size: 1.1rem; font-weight: 700; color: var(--dk-green); }
+.shop-total-note {
+  width: 100%;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+/* ── Price Book view ─────────────────────────────────── */
+.pb-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 16px;
+  border-bottom: 1px solid #e8e8e8;
+  gap: 8px;
+}
+.pb-row:last-child { border-bottom: none; }
+.pb-row-main {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+.pb-ingredient {
+  font-weight: 600;
+  font-size: 0.9rem;
+  text-transform: capitalize;
+}
+.pb-price {
+  font-size: 0.85rem;
+  color: var(--md-green);
+  font-weight: 600;
+}
+.pb-retailer {
+  font-size: 0.75rem;
+  background: var(--lt-green);
+  color: var(--dk-green);
+  border-radius: 4px;
+  padding: 1px 6px;
+  font-weight: 600;
+}
+.pb-row-actions {
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
+}
+.btn-danger-mini {
+  background: #fee2e2;
+  color: #dc2626;
+  border: none;
+  border-radius: 6px;
+  padding: 4px 8px;
+  font-size: 0.75rem;
+  cursor: pointer;
+  font-weight: 600;
+}
+.btn-danger-mini:hover { background: #fca5a5; }
+
+/* Section header with multiple action buttons */
+.section-header-actions {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
