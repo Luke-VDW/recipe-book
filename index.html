@@ -85,6 +85,7 @@
           <button class="btn-small" onclick="App.pushView('pricebook','Price Book'); PriceBook.render()">Price Book</button>
           <button class="btn-small" onclick="App.pushView('pantry','Pantry'); Pantry.render()">Pantry</button>
           <button class="btn-small" onclick="Shopping.openLogPurchase()">Log Purchase</button>
+          <button class="btn-small" onclick="Shopping.openCompleteShop()">Complete Shop</button>
           <button class="btn-small" onclick="Shopping.clearChecked()">Clear checked</button>
         </div>
       </div>
@@ -130,6 +131,11 @@
         <button class="btn-secondary" onclick="App.pushView('pantry','Pantry'); Pantry.render()">Manage Pantry →</button>
       </div>
       <div class="settings-group">
+        <h3>Spend Analytics</h3>
+        <p class="hint">Track your grocery spend over time with weekly and monthly breakdowns.</p>
+        <button class="btn-secondary" onclick="App.pushView('analytics','Spend Analytics'); Analytics.render()">View Analytics →</button>
+      </div>
+      <div class="settings-group">
         <h3>Data</h3>
         <button class="btn-secondary" onclick="Data.exportJSON()">⬇ Export JSON</button>
         <button class="btn-secondary" onclick="Data.importJSON()">⬆ Import JSON</button>
@@ -167,6 +173,15 @@
       </div>
       <div id="pantry-list"></div>
       <button class="pantry-add-btn" onclick="Pantry.openAddForm()">＋ Add item</button>
+    </section>
+
+
+    <!-- ANALYTICS -->
+    <section id="view-analytics" class="view">
+      <div class="section-header">
+        <h2>Spend Analytics</h2>
+      </div>
+      <div id="analytics-content"></div>
     </section>
 
   </main>
@@ -225,6 +240,7 @@
   <script src="js/spoonacular.js"></script>
   <script src="js/prices.js"></script>
   <script src="js/pantry.js"></script>
+  <script src="js/analytics.js"></script>
   <script src="js/app.js"></script>
 </body>
 </html>
