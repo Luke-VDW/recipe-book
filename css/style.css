@@ -858,3 +858,21 @@ body {
   border-color: var(--md-green);
   color: var(--md-green);
 }
+
+/* ── Analytics view ────────────────────────────────────── */
+.analytics-summary { display:flex; gap:12px; margin-bottom:24px; flex-wrap:wrap; }
+.analytics-card { flex:1; min-width:120px; background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:16px; text-align:center; }
+.analytics-card-label { font-size:0.75rem; color:var(--text-muted); margin-bottom:4px; }
+.analytics-card-value { font-size:1.4rem; font-weight:700; color:var(--dk-green); }
+.analytics-section-title { font-weight:700; margin:20px 0 10px; }
+.analytics-bar-row { display:flex; align-items:center; gap:10px; margin-bottom:8px; font-size:0.85rem; }
+.analytics-bar-label { width:90px; flex-shrink:0; }
+.analytics-bar-track { flex:1; background:var(--border); border-radius:4px; height:14px; overflow:hidden; }
+.analytics-bar-fill { height:100%; background:var(--md-green); border-radius:4px; transition:width 0.3s; }
+.analytics-bar-amount { width:70px; text-align:right; flex-shrink:0; }
+.analytics-shop-row { border-bottom:1px solid var(--border); padding:12px 0; }
+.analytics-shop-header { display:flex; justify-content:space-between; align-items:center; cursor:pointer; }
+.analytics-shop-date { font-weight:600; }
+.analytics-shop-total { color:var(--dk-green); font-weight:700; }
+.analytics-shop-detail { font-size:0.82rem; color:var(--text-muted); padding:8px 0 0; display:none; }
+.analytics-shop-detail.open { display:block; }
