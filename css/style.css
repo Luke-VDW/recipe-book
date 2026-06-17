@@ -62,6 +62,7 @@ body {
   bottom: calc(var(--nav-h) + env(safe-area-inset-bottom));
   left: 0; right: 0;
   overflow-y: auto;
+  overflow-x: hidden;
   -webkit-overflow-scrolling: touch;
 }
 
@@ -92,17 +93,17 @@ body {
 
 /* ── SEARCH BAR ── */
 .search-bar {
-  display: flex; gap: 8px; margin-bottom: 12px;
+  display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px;
 }
 .search-bar input[type="search"],
 .search-bar input[type="text"] {
-  flex: 1; padding: 10px 12px; border: 1.5px solid var(--border);
+  flex: 1 1 100%; padding: 10px 12px; border: 1.5px solid var(--border);
   border-radius: var(--radius); font-size: .95rem; background: var(--surface);
   outline: none;
 }
 .search-bar input:focus { border-color: var(--md-green); }
 .search-bar select {
-  padding: 10px 8px; border: 1.5px solid var(--border);
+  flex: 1; min-width: 80px; padding: 10px 8px; border: 1.5px solid var(--border);
   border-radius: var(--radius); font-size: .85rem; background: var(--surface);
   color: var(--text); outline: none;
 }
@@ -432,7 +433,7 @@ body {
 }
 .form-group textarea { resize: vertical; min-height: 80px; line-height: 1.5; }
 .form-row { display: flex; gap: 8px; }
-.form-row .form-group { flex: 1; }
+.form-row .form-group { flex: 1; min-width: 0; }
 .modal-actions { display: flex; gap: 8px; margin-top: 16px; }
 .modal-actions button { flex: 1; padding: 12px; }
 

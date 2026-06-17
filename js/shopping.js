@@ -8,14 +8,19 @@ const Shopping = (() => {
   const CAT_MAP = {
     'produce':    ['onion','garlic','tomato','potato','carrot','pepper','cucumber','spinach','lettuce',
                    'mushroom','celery','zucchini','broccoli','cauliflower','pea','bean','corn',
-                   'avocado','lemon','lime','banana','apple','orange','berry','herb','basil','parsley',
+                   'avocado','lemon','lime','banana','apple','orange','berry','basil','parsley',
                    'coriander','ginger','chilli','capsicum'],
     'meat':       ['beef','chicken','pork','lamb','mince','steak','bacon','sausage','turkey','salmon',
                    'tuna','prawn','shrimp','fish'],
     'dairy':      ['milk','cream','butter','cheese','feta','yogurt','egg','cheddar','parmesan'],
-    'pantry':     ['oil','vinegar','sauce','paste','flour','sugar','salt','pepper','spice','seasoning',
+    'spices & herbs': ['cumin','cayenne','paprika','smoked paprika','oregano','cinnamon','nutmeg',
+                   'turmeric','cardamom','thyme','rosemary','bay leaf','chili powder','chilli powder',
+                   'garlic powder','onion powder','allspice','mixed spice','mustard seed','saffron',
+                   'star anise','fennel seed','curry powder','garam masala','five spice',
+                   'pepper flake','dried herb','ground spice','seasoning'],
+    'pantry':     ['oil','vinegar','sauce','paste','flour','sugar','salt','spice',
                    'stock','broth','tin','can','coconut','oats','rice','bread','biscuit','cracker'],
-    'pasta & grains': ['pasta','spaghetti','penne','rice','noodle','quinoa','couscous','polenta'],
+    'pasta & grains': ['pasta','spaghetti','penne','noodle','quinoa','couscous','polenta'],
     'frozen':     ['frozen'],
     'drinks':     ['water','juice','wine','beer','coffee','tea'],
   };
@@ -53,7 +58,7 @@ const Shopping = (() => {
       groups[cat].push({ ...item, _idx: idx });
     });
 
-    const catOrder = ['produce','meat','dairy','pasta & grains','pantry','frozen','drinks','other'];
+    const catOrder = ['produce','meat','dairy','spices & herbs','pasta & grains','pantry','frozen','drinks','other'];
     const orderedCats = catOrder.filter(c => groups[c]);
 
     el.innerHTML = orderedCats.map(cat => {

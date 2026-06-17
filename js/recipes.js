@@ -411,7 +411,7 @@ const Recipes = (() => {
   async function calculateCalories() {
     const ingredientsText = (document.getElementById('rf-ing')?.value || '').trim();
     if (!ingredientsText) { App.toast('Add ingredients first.', 'warn'); return; }
-    const apiKey = localStorage.getItem('spoonacularKey');
+    const apiKey = localStorage.getItem('rb_spoon_key');
     if (!apiKey) { App.toast('No Spoonacular key — go to Settings to add one.', 'warn'); return; }
 
     const btn = document.getElementById('btn-calc-kcal');

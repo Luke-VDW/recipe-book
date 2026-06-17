@@ -54,6 +54,7 @@ const Importer = (() => {
       );
       if (!res.ok) throw new Error('API error ' + res.status);
       const data = await res.json();
+      _saveQuota(res.headers);
 
       if (!data.results || data.results.length === 0) {
         resultsEl.innerHTML = '<div class="empty-state">No results found.</div>';
@@ -81,9 +82,10 @@ const Importer = (() => {
 
     App.toast('Importing…', 'info');
     try {
-      const res = await fetch(`${BASE}/recipes/${id}/information?apiKey=${key}`);
+      const res = await fetch(`${BASE}/recipes/${id}/information?includeNutrition=true&apiKey=${key}`);
       if (!res.ok) throw new Error('API error ' + res.status);
       const d = await res.json();
+      _saveQuota(res.headers);
 
       // Build ingredients string — prefer metric measures when available
       const ingredients = (d.extendedIngredients || []).map(i => {
@@ -125,6 +127,10 @@ const Importer = (() => {
       const tags = [...(d.cuisines || []), ...(d.diets || [])]
         .map(t => t.charAt(0).toUpperCase() + t.slice(1)).slice(0, 5).join(', ');
 
+      // Extract calories from nutrition data (per-serving × servings = total)
+      const calNutrient = (d.nutrition?.nutrients || []).find(n => n.name === 'Calories');
+      const kcalTotal = calNutrient ? Math.round(calNutrient.amount * (d.servings || 1)) : null;
+
       const recipe = {
         name: d.title,
         category,
@@ -135,6 +141,7 @@ const Importer = (() => {
         method,
         tags,
         source: d.sourceUrl || d.spoonacularSourceUrl || '',
+        kcalTotal,
       };
 
       Data.addRecipe(recipe);
@@ -142,6 +149,15 @@ const Importer = (() => {
       App.toast(`"${d.title}" imported ✓`);
     } catch(err) {
       App.toast('Import failed: ' + err.message, 'error');
+    }
+  }
+
+  function _saveQuota(headers) {
+    const left = headers.get('X-API-Quota-Left');
+    if (left != null) {
+      localStorage.setItem('rb_spoon_quota', left);
+      const el = document.getElementById('spoon-quota-display');
+      if (el) el.textContent = `API quota remaining today: ${left} points`;
     }
   }
 
