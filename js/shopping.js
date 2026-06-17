@@ -60,6 +60,10 @@ const Shopping = (() => {
     return n % 1 === 0 ? String(n) : n.toFixed(2).replace(/\.?0+$/, '');
   }
 
+  function _esc(s) {
+    return (s || '').replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  }
+
   function _renderPriceDisplay(idx, item) {
     const entry = Data.lookupPriceEntry(item.name);
     if (!entry) {
@@ -71,7 +75,7 @@ const Shopping = (() => {
     const costHtml = cost != null
       ? `<span class="shop-price-cost">R ${cost.toFixed(2)}</span><span class="shop-price-sep">·</span>`
       : '';
-    const retailer = entry.retailer ? ` <span class="shop-price-retailer-tag">${entry.retailer}</span>` : '';
+    const retailer = entry.retailer ? ` <span class="shop-price-retailer-tag">${_esc(entry.retailer)}</span>` : '';
     return `<div class="shop-price-display" id="shop-price-${idx}">
     ${costHtml}<span class="shop-price-per">R ${entry.pricePerUnit.toFixed(2)}/${entry.unit}</span>${retailer}
     <button class="shop-price-edit-btn" onclick="Shopping.editPrice(${idx})" title="Edit price">✏</button>
@@ -97,7 +101,7 @@ const Shopping = (() => {
         <span class="shop-pf-sep">per</span>
         <select id="sp-unit-${idx}" class="shop-pf-unit">${unitOpts}</select>
         <input type="text" id="sp-retailer-${idx}" class="shop-pf-retailer"
-          value="${entry.retailer || ''}" placeholder="Store" maxlength="20" />
+          value="${_esc(entry.retailer)}" placeholder="Store" maxlength="20" />
         <button class="btn-mini btn-mini-primary" onclick="Shopping.savePrice(${idx})">Save</button>
         <button class="btn-mini" onclick="Shopping.render()">✕</button>
       </div>`;
@@ -172,7 +176,7 @@ const Shopping = (() => {
           (item.sources.length > 1 || (item.sources[0] && item.sources[0].context));
         let sourcesHtml = '';
         if (hasSources) {
-          const rows = item.sources.map(s => {
+          const sourceRows = item.sources.map(s => {
             const ctxParts = [];
             if (s.qty) ctxParts.push(fmtQty(s.qty) + (s.unit ? ' ' + s.unit : ''));
             if (s.context) ctxParts.push(s.context);
@@ -181,7 +185,7 @@ const Shopping = (() => {
               ${ctxParts.length ? `<span class="shop-source-ctx">${ctxParts.join(' · ')}</span>` : ''}
             </div>`;
           }).join('');
-          sourcesHtml = `<div id="shop-sources-${item._idx}" class="shop-item-sources hidden">${rows}</div>`;
+          sourcesHtml = `<div id="shop-sources-${item._idx}" class="shop-item-sources hidden">${sourceRows}</div>`;
         }
 
         return `
