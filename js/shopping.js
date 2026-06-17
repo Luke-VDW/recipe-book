@@ -6,6 +6,7 @@ const Shopping = (() => {
 
   let _userUnchecked = new Set(); // ingredient names (lowercase) the user explicitly unticked
   let _logItems = []; // items captured when Log Purchase modal was opened
+  let _pendingSpend = null;
 
   // Simple category guesser
   const CAT_MAP = {
@@ -324,5 +325,49 @@ const Shopping = (() => {
     render();
   }
 
-  return { render, toggle, toggleSources, clearChecked, editPrice, savePrice, openLogPurchase, confirmPurchase };
+  function openCompleteShop() {
+    const items = Data.getShoppingList();
+    const pricedItems = items.map(item => {
+      const cost = Data.lookupPrice(item.name, item.qty, item.unit);
+      return cost != null && cost > 0 ? { name: item.name, qty: item.qty, unit: item.unit, cost } : null;
+    }).filter(Boolean);
+
+    if (pricedItems.length === 0) {
+      App.toast('No prices set — add prices to the Price Book first', 'warn');
+      return;
+    }
+
+    const total = Math.round(pricedItems.reduce((s, i) => s + i.cost, 0) * 100) / 100;
+    _pendingSpend = {
+      date: new Date().toISOString().slice(0, 10),
+      total,
+      items: pricedItems,
+    };
+
+    const rows = pricedItems.map(item =>
+      `<div style="padding:4px 0;font-size:0.9rem">${_esc(item.name)} × ${item.qty || ''} ${_esc(item.unit || '')} — R${item.cost.toFixed(2)}</div>`
+    ).join('');
+
+    document.getElementById('modal-content').innerHTML = `
+      <h3>Complete Shop</h3>
+      <div style="max-height:40vh;overflow-y:auto;margin-bottom:12px">${rows}</div>
+      <div style="font-weight:700;font-size:1.05rem;margin-bottom:16px">Total: R${total.toFixed(2)}</div>
+      <div class="modal-actions">
+        <button class="btn-secondary" onclick="App.closeModal()">Cancel</button>
+        <button class="btn-primary" onclick="Shopping.confirmCompleteShop()">Log Spend &amp; Clear List</button>
+      </div>`;
+    document.getElementById('modal-overlay').classList.remove('hidden');
+  }
+
+  function confirmCompleteShop() {
+    if (!_pendingSpend) return;
+    Data.logSpend(_pendingSpend);
+    _pendingSpend = null;
+    clearChecked();
+    App.closeModal();
+    App.toast('Shop logged ✓');
+    render();
+  }
+
+  return { render, toggle, toggleSources, clearChecked, editPrice, savePrice, openLogPurchase, confirmPurchase, openCompleteShop, confirmCompleteShop };
 })();
