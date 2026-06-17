@@ -87,6 +87,13 @@ const Data = (() => {
     save();
   }
 
+  function setTreats(week, treats) {
+    const wk = 'week' + week;
+    _db.mealPlan[wk] = _db.mealPlan[wk] || {};
+    _db.mealPlan[wk].treats = treats;
+    save();
+  }
+
   function toggleShoppingItem(idx) {
     if (_db.shoppingList[idx]) {
       _db.shoppingList[idx].checked = !_db.shoppingList[idx].checked;
@@ -321,7 +328,7 @@ const Data = (() => {
   return {
     load, save, getRecipes, getPlan, getPantry, getShoppingList,
     addRecipe, updateRecipe, deleteRecipe, getRecipeById,
-    setMealSlot, setShoppingList, toggleShoppingItem,
+    setMealSlot, setShoppingList, setTreats, toggleShoppingItem,
     isDriveConnected, connectDrive, disconnectDrive, syncDrive,
     exportJSON, importJSON, handleImportFile, clearAll,
     loadStarterData, getClientId, setClientId,

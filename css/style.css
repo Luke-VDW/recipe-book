@@ -257,7 +257,33 @@ body {
 .summary-placeholder .emoji { font-size: 2rem; display: block; margin-bottom: 10px; }
 .summary-placeholder .text-muted { font-size: 0.85rem; margin-top: 4px; }
 
-/* ── TREAT ROW (stub — full styles added in Task 2) ── */
+/* ── TREAT ROW ── */
+.treats-list { margin-bottom: 4px; }
+.treat-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border);
+}
+.treat-name { flex: 1; font-weight: 500; font-size: 0.95rem; }
+.treat-batches {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.88rem;
+  color: var(--text-muted);
+}
+.treat-remove {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 1.2rem;
+  cursor: pointer;
+  padding: 2px 6px;
+  line-height: 1;
+}
+.treat-remove:hover { color: var(--danger); }
 .treat-add-btn { margin-top: 16px; width: 100%; }
 
 /* ── PLANNER GRID ── */

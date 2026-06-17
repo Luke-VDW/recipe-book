@@ -1,4 +1,4 @@
-/* ══════════════════════════════════════
+﻿/* ══════════════════════════════════════
    planner.js — 4-week meal planner
    ══════════════════════════════════════ */
 
@@ -85,7 +85,31 @@ const Planner = (() => {
   function _renderTreats() {
     const el = document.getElementById('planner-grid');
     if (!el) return;
-    el.innerHTML = `<div class="empty-state"><span class="emoji">🍰</span>No treats this week. Tap ＋ to add one.</div>
+    const plan = Data.getPlan();
+    const wk     = plan['week' + _currentWeek] || {};
+    const treats = wk.treats || [];
+
+    const rows = treats.map((t, i) => {
+      const r = Data.getRecipeById(t.recipeId);
+      if (!r) return '';
+      return `
+      <div class="treat-row">
+        <span class="treat-name">${r.name}</span>
+        <div class="treat-batches">
+          <button class="stepper-btn" onclick="Planner.updateTreatBatches(${i}, -1)">−</button>
+          <span>${t.batches} batch${t.batches !== 1 ? 'es' : ''}</span>
+          <button class="stepper-btn" onclick="Planner.updateTreatBatches(${i}, 1)">+</button>
+        </div>
+        <button class="treat-remove" onclick="Planner.removeTreat(${i})">×</button>
+      </div>`;
+    }).filter(Boolean).join('');
+
+    const emptyHtml = treats.length === 0
+      ? `<div class="empty-state"><span class="emoji">🍰</span>No treats this week. Tap ＋ to add one.</div>`
+      : '';
+
+    el.innerHTML = `
+    <div class="treats-list">${emptyHtml}${rows}</div>
     <button class="btn-secondary treat-add-btn" onclick="Planner.openAddTreatModal()">＋ Add treat</button>`;
   }
 
@@ -113,7 +137,53 @@ const Planner = (() => {
   }
 
   function openAddTreatModal() {
-    App.toast('Treats coming soon', 'warn');
+    const recipes = Data.getRecipes().slice().sort((a, b) => a.name.localeCompare(b.name));
+    if (recipes.length === 0) {
+      App.toast('No recipes yet — add some recipes first.', 'warn');
+      return;
+    }
+    document.getElementById('modal-content').innerHTML = `
+    <h3>Add Treat — Week ${_currentWeek}</h3>
+    <div class="form-group">
+      <label>Recipe</label>
+      <select id="treat-recipe-select">
+        ${recipes.map(r => `<option value="${r.id}">${r.name}</option>`).join('')}
+      </select>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-secondary" onclick="App.closeModal()">Cancel</button>
+      <button class="btn-primary" onclick="Planner.confirmAddTreat()">Add Treat</button>
+    </div>`;
+    document.getElementById('modal-overlay').classList.remove('hidden');
+  }
+
+  function confirmAddTreat() {
+    const recipeId = document.getElementById('treat-recipe-select')?.value;
+    if (!recipeId) return;
+    const plan   = Data.getPlan();
+    const wk     = plan['week' + _currentWeek] || {};
+    const treats = [...(wk.treats || []), { recipeId, batches: 1 }];
+    Data.setTreats(_currentWeek, treats);
+    App.closeModal();
+    render();
+  }
+
+  function removeTreat(idx) {
+    const plan   = Data.getPlan();
+    const wk     = plan['week' + _currentWeek] || {};
+    const treats = (wk.treats || []).filter((_, i) => i !== idx);
+    Data.setTreats(_currentWeek, treats);
+    render();
+  }
+
+  function updateTreatBatches(idx, delta) {
+    const plan   = Data.getPlan();
+    const wk     = plan['week' + _currentWeek] || {};
+    const treats = [...(wk.treats || [])];
+    if (!treats[idx]) return;
+    treats[idx] = { ...treats[idx], batches: Math.max(1, (treats[idx].batches || 1) + delta) };
+    Data.setTreats(_currentWeek, treats);
+    render();
   }
 
   function generateShoppingList() {
@@ -162,5 +232,6 @@ const Planner = (() => {
     Shopping.render();
   }
 
-  return { render, showWeek, showTab, setSlot, generateShoppingList, filterRecipes, openAddTreatModal };
+  return { render, showWeek, showTab, setSlot, generateShoppingList, filterRecipes,
+           openAddTreatModal, confirmAddTreat, removeTreat, updateTreatBatches };
 })();
