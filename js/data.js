@@ -133,23 +133,20 @@ const Data = (() => {
     if (pbUnit === 'l')     return [pricePerUnit / 1000, 'ml'];
     if (pbUnit === 'tsp')   return [pricePerUnit / 5, 'ml'];
     if (pbUnit === 'tbsp')  return [pricePerUnit / 15, 'ml'];
+    if (pbUnit === 'cup')   return [pricePerUnit / 240, 'ml'];
     return [pricePerUnit, 'item'];
   }
 
   // ── Price Book CRUD ──────────────────
   function getPriceBook() { return _db.priceBook || []; }
 
-  function setPriceEntry(entry, idx) {
+  function setPriceEntry(entry) {
     if (!_db.priceBook) _db.priceBook = [];
-    if (idx !== undefined && idx >= 0 && idx < _db.priceBook.length) {
-      _db.priceBook[idx] = entry;
-    } else {
-      const existing = _db.priceBook.findIndex(
-        e => e.ingredient.toLowerCase() === entry.ingredient.toLowerCase()
-      );
-      if (existing >= 0) _db.priceBook[existing] = entry;
-      else _db.priceBook.push(entry);
-    }
+    const existing = _db.priceBook.findIndex(
+      e => e.ingredient.toLowerCase() === entry.ingredient.toLowerCase()
+    );
+    if (existing >= 0) _db.priceBook[existing] = entry;
+    else _db.priceBook.push(entry);
     save();
   }
 
@@ -162,10 +159,9 @@ const Data = (() => {
   function lookupPriceEntry(name) {
     const lower = (name || '').toLowerCase().trim();
     const book = _db.priceBook || [];
-    return book.find(e =>
-      lower.includes(e.ingredient.toLowerCase()) ||
-      e.ingredient.toLowerCase().includes(lower)
-    ) || null;
+    const exact = book.find(e => lower === e.ingredient.toLowerCase());
+    if (exact) return exact;
+    return book.find(e => lower.includes(e.ingredient.toLowerCase())) || null;
   }
 
   function lookupPrice(name, qty, unit) {
