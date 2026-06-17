@@ -67,6 +67,11 @@ const Data = (() => {
         });
       });
     });
+    ['week1','week2','week3','week4'].forEach(w => {
+      if (_db.mealPlan[w]?.treats) {
+        _db.mealPlan[w].treats = _db.mealPlan[w].treats.filter(t => t.recipeId !== id);
+      }
+    });
     save();
   }
 
@@ -214,6 +219,9 @@ const Data = (() => {
             }
           });
         });
+        if (remoteWk.treats?.length && !(_db.mealPlan[w]?.treats?.length)) {
+          _db.mealPlan[w].treats = remoteWk.treats;
+        }
       });
 
       save();

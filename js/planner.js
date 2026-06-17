@@ -104,7 +104,7 @@ const Planner = (() => {
       </div>`;
     }).filter(Boolean).join('');
 
-    const emptyHtml = treats.length === 0
+    const emptyHtml = rows === ''
       ? `<div class="empty-state"><span class="emoji">🍰</span>No treats this week. Tap ＋ to add one.</div>`
       : '';
 
