@@ -126,12 +126,97 @@ const Planner = (() => {
   function _renderSummary() {
     const el = document.getElementById('planner-grid');
     if (!el) return;
+    const plan = Data.getPlan();
+    const wk     = plan['week' + _currentWeek] || {};
+    const treats = wk.treats || [];
+
+    let hasMissingKcal = false;
+
+    const dayRows = Data.DAYS.map(day => {
+      const dayData = wk[day] || {};
+      let dayTotal = 0;
+      const parts = [];
+      Data.MEALS.forEach(meal => {
+        const id = dayData[meal];
+        if (!id) return;
+        const r = Data.getRecipeById(id);
+        if (!r) return;
+        const abbrev = meal[0].toUpperCase();
+        if (r.kcalTotal == null) {
+          hasMissingKcal = true;
+          parts.push(`${abbrev}:—*`);
+        } else {
+          const kcal = Math.round(r.kcalTotal / (r.servings || 1));
+          dayTotal += kcal;
+          parts.push(`${abbrev}:${kcal}`);
+        }
+      });
+      return { label: DAY_LABELS[day], parts, dayTotal };
+    });
+
+    const mealsTotal = dayRows.reduce((sum, d) => sum + d.dayTotal, 0);
+
+    let treatsTotal = 0;
+    const treatRows = treats.map(t => {
+      const r = Data.getRecipeById(t.recipeId);
+      if (!r) return null;
+      const batches = t.batches || 1;
+      if (r.kcalTotal == null) {
+        hasMissingKcal = true;
+        return { name: r.name, batches, kcal: null };
+      }
+      const kcal = r.kcalTotal * batches;
+      treatsTotal += kcal;
+      return { name: r.name, batches, kcal };
+    }).filter(Boolean);
+
+    const weekTotal = mealsTotal + treatsTotal;
+    const hasContent = dayRows.some(d => d.parts.length > 0) || treatRows.length > 0;
+
+    if (!hasContent) {
+      el.innerHTML = `<div class="empty-state"><span class="emoji">📊</span>No meals planned for this week.</div>`;
+      return;
+    }
+
+    const dayRowsHtml = dayRows.map(d => `
+      <tr>
+        <td class="summary-day">${d.label}</td>
+        <td class="summary-meals">${d.parts.join(' · ') || '<span style="color:var(--text-muted)">—</span>'}</td>
+        <td class="summary-day-total">${d.dayTotal > 0 ? d.dayTotal + ' kcal' : (d.parts.length ? '—' : '')}</td>
+      </tr>`).join('');
+
+    const treatSectionHtml = treatRows.length ? `
+      <tr class="summary-section-header"><td colspan="3">Treats</td></tr>
+      ${treatRows.map(t => `
+      <tr>
+        <td colspan="2" class="summary-treat-name">${t.name} ×${t.batches} ${t.batches !== 1 ? 'batches' : 'batch'}</td>
+        <td class="summary-day-total">${t.kcal != null ? t.kcal + ' kcal' : '—*'}</td>
+      </tr>`).join('')}
+      <tr class="summary-subtotal">
+        <td colspan="2">Treats total</td>
+        <td class="summary-day-total">${treatsTotal > 0 ? treatsTotal + ' kcal' : '—'}</td>
+      </tr>` : '';
+
+    const footnote = hasMissingKcal
+      ? `<p class="summary-footnote">* Calorie data missing — open the recipe to calculate.</p>` : '';
+
     el.innerHTML = `
-    <div class="summary-placeholder">
-      <span class="emoji">📊</span>
-      <p>Calorie &amp; cost summary</p>
-      <p class="text-muted">Coming soon</p>
-    </div>`;
+      <div class="summary-header">Week ${_currentWeek} — Calorie Summary</div>
+      <table class="summary-table">
+        <tbody>
+          ${dayRowsHtml}
+          <tr class="summary-subtotal">
+            <td colspan="2">Meals total</td>
+            <td class="summary-day-total">${mealsTotal > 0 ? mealsTotal + ' kcal' : '—'}</td>
+          </tr>
+          ${treatSectionHtml}
+          <tr class="summary-grand-total">
+            <td colspan="2">Week total</td>
+            <td class="summary-day-total">${weekTotal > 0 ? weekTotal + ' kcal' : '—'}</td>
+          </tr>
+        </tbody>
+      </table>
+      ${footnote}`;
   }
 
   function filterRecipes() {

@@ -248,14 +248,27 @@ body {
 #view-planner:not(.meals-active) .planner-filter-bar,
 #view-planner:not(.meals-active) .planner-actions { display: none; }
 
-/* ── SUMMARY PLACEHOLDER ── */
-.summary-placeholder {
-  text-align: center;
-  padding: 48px 20px;
-  color: var(--text-muted);
+/* ── CALORIE SUMMARY TABLE ── */
+.summary-header {
+  font-weight: 700; font-size: 0.95rem;
+  margin-bottom: 12px; color: var(--dk-green);
 }
-.summary-placeholder .emoji { font-size: 2rem; display: block; margin-bottom: 10px; }
-.summary-placeholder .text-muted { font-size: 0.85rem; margin-top: 4px; }
+.summary-table { width: 100%; border-collapse: collapse; font-size: 0.88rem; }
+.summary-table td { padding: 6px 4px; border-bottom: 1px solid var(--border); vertical-align: top; }
+.summary-day { font-weight: 500; min-width: 90px; }
+.summary-meals { color: var(--text-muted); font-size: 0.8rem; }
+.summary-day-total { text-align: right; white-space: nowrap; }
+.summary-section-header td {
+  font-weight: 700; color: var(--dk-green);
+  padding-top: 12px; border-bottom: 2px solid var(--lt-green);
+}
+.summary-treat-name { color: var(--text-muted); }
+.summary-subtotal td { font-weight: 600; border-top: 2px solid var(--border); border-bottom: none; }
+.summary-grand-total td {
+  font-weight: 700; font-size: 1rem; color: var(--dk-green);
+  border-top: 2px solid var(--dk-green); border-bottom: none;
+}
+.summary-footnote { font-size: 0.78rem; color: var(--text-muted); margin-top: 12px; }
 
 /* ── RECIPE DETAIL KCAL ── */
 .detail-kcal { font-size: 0.85rem; color: var(--text-muted); }
