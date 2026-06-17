@@ -154,6 +154,9 @@ const Recipes = (() => {
         </span>` : ''}
         ${r.prepMins ? `<span>⏱ ${r.prepMins}m prep</span>` : ''}
         ${r.cookMins ? `<span>🔥 ${r.cookMins}m cook</span>` : ''}
+        <span class="detail-kcal">${r.kcalTotal != null
+          ? `${r.kcalTotal} kcal · ${Math.round(r.kcalTotal / (r.servings || 1))} kcal/serving`
+          : '— kcal'}</span>
       </div>
       ${tags ? `<div class="detail-tags">${tags}</div>` : ''}
       <div class="detail-actions">
