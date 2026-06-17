@@ -83,6 +83,8 @@
         <h2>Shopping List</h2>
         <div class="section-header-actions">
           <button class="btn-small" onclick="App.pushView('pricebook','Price Book'); PriceBook.render()">Price Book</button>
+          <button class="btn-small" onclick="App.pushView('pantry','Pantry'); Pantry.render()">Pantry</button>
+          <button class="btn-small" onclick="Shopping.openLogPurchase()">Log Purchase</button>
           <button class="btn-small" onclick="Shopping.clearChecked()">Clear checked</button>
         </div>
       </div>
@@ -123,6 +125,11 @@
         <button class="btn-secondary" onclick="App.pushView('pricebook','Price Book'); PriceBook.render()">Manage Price Book →</button>
       </div>
       <div class="settings-group">
+        <h3>Pantry</h3>
+        <p class="hint">Track what you have at home. Shopping list shows stock levels automatically.</p>
+        <button class="btn-secondary" onclick="App.pushView('pantry','Pantry'); Pantry.render()">Manage Pantry →</button>
+      </div>
+      <div class="settings-group">
         <h3>Data</h3>
         <button class="btn-secondary" onclick="Data.exportJSON()">⬇ Export JSON</button>
         <button class="btn-secondary" onclick="Data.importJSON()">⬆ Import JSON</button>
@@ -145,6 +152,21 @@
           oninput="PriceBook.filter()" />
       </div>
       <div id="pricebook-list"></div>
+    </section>
+
+    <!-- PANTRY -->
+    <section id="view-pantry" class="view">
+      <div class="section-header">
+        <h2>Pantry</h2>
+        <div class="section-header-actions">
+          <button class="btn-small" onclick="Pantry.resetPerishables()">Reset perishables</button>
+        </div>
+      </div>
+      <div class="search-bar">
+        <input id="pantry-search" type="search" placeholder="Search pantry…" oninput="Pantry.filter()" />
+      </div>
+      <div id="pantry-list"></div>
+      <button class="pantry-add-btn" onclick="Pantry.openAddForm()">＋ Add item</button>
     </section>
 
   </main>
@@ -202,6 +224,7 @@
   <script src="js/shopping.js"></script>
   <script src="js/spoonacular.js"></script>
   <script src="js/prices.js"></script>
+  <script src="js/pantry.js"></script>
   <script src="js/app.js"></script>
 </body>
 </html>
