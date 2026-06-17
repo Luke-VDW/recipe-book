@@ -363,7 +363,7 @@ const Recipes = (() => {
   function _updateKcalDisplay(kcal, servings) {
     const el = document.getElementById('kcal-display');
     if (!el) return;
-    if (kcal) {
+    if (kcal != null) {
       const perServing = Math.round(kcal / (servings || 1));
       el.innerHTML = `
         <span class="kcal-value">${kcal} kcal · ${perServing} kcal/serving</span>
@@ -415,6 +415,7 @@ const Recipes = (() => {
     const origLabel = btn?.textContent;
     if (btn) { btn.disabled = true; btn.textContent = 'Calculating…'; }
 
+    let result = null;
     try {
       const ingredientList = ingredientsText.split(';').map(s => s.trim()).filter(Boolean).join('\n');
       const formData = new FormData();
@@ -434,18 +435,20 @@ const Recipes = (() => {
         const cal = (ing.nutrition?.nutrients || []).find(n => n.name === 'Calories');
         if (cal) totalKcal += cal.amount;
       });
-      totalKcal = Math.round(totalKcal);
-
-      const hiddenInput = document.getElementById('rf-kcal');
-      if (hiddenInput) hiddenInput.value = totalKcal;
-      const servings = parseInt(document.getElementById('rf-srv')?.value) || 1;
-      _updateKcalDisplay(totalKcal, servings);
-      App.toast(`Calories calculated: ${totalKcal} kcal ✓`);
+      result = Math.round(totalKcal);
+      App.toast(`Calories calculated: ${result} kcal ✓`);
     } catch (err) {
       console.error('Calorie calculation error:', err);
       App.toast('Calorie calculation failed — check your Spoonacular key.', 'warn');
     } finally {
       if (btn) { btn.disabled = false; if (origLabel) btn.textContent = origLabel; }
+    }
+
+    if (result !== null) {
+      const hiddenInput = document.getElementById('rf-kcal');
+      if (hiddenInput) hiddenInput.value = result;
+      const servings = parseInt(document.getElementById('rf-srv')?.value) || 1;
+      _updateKcalDisplay(result, servings);
     }
   }
 
