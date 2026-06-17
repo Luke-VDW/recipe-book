@@ -62,6 +62,11 @@
         <button class="week-tab" onclick="Planner.showWeek(3,this)">Week 3</button>
         <button class="week-tab" onclick="Planner.showWeek(4,this)">Week 4</button>
       </div>
+      <div class="inner-tabs">
+        <button class="inner-tab active" data-tab="meals"   onclick="Planner.showTab('meals')">Meals</button>
+        <button class="inner-tab"        data-tab="treats"  onclick="Planner.showTab('treats')">Treats</button>
+        <button class="inner-tab"        data-tab="summary" onclick="Planner.showTab('summary')">Summary</button>
+      </div>
       <div class="planner-filter-bar">
         <input id="planner-recipe-filter" type="search" placeholder="Filter recipes…"
           oninput="Planner.filterRecipes()" />

@@ -220,6 +220,46 @@ body {
   background: var(--dk-green); color: #fff; border-color: var(--dk-green);
 }
 
+/* ── INNER TABS (Meals / Treats / Summary) ── */
+.inner-tabs {
+  display: flex;
+  gap: 0;
+  margin-bottom: 12px;
+  border-bottom: 2px solid var(--border);
+}
+.inner-tab {
+  padding: 7px 16px;
+  border: none;
+  background: none;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -2px;
+  font-weight: 500;
+}
+.inner-tab.active {
+  color: var(--dk-green);
+  border-bottom-color: var(--dk-green);
+  font-weight: 700;
+}
+
+/* Hide meals-only controls when not on Meals tab */
+#view-planner:not(.meals-active) .planner-filter-bar,
+#view-planner:not(.meals-active) .planner-actions { display: none; }
+
+/* ── SUMMARY PLACEHOLDER ── */
+.summary-placeholder {
+  text-align: center;
+  padding: 48px 20px;
+  color: var(--text-muted);
+}
+.summary-placeholder .emoji { font-size: 2rem; display: block; margin-bottom: 10px; }
+.summary-placeholder .text-muted { font-size: 0.85rem; margin-top: 4px; }
+
+/* ── TREAT ROW (stub — full styles added in Task 2) ── */
+.treat-add-btn { margin-top: 16px; width: 100%; }
+
 /* ── PLANNER GRID ── */
 .planner-day {
   background: var(--surface); border-radius: var(--radius);
@@ -470,34 +510,4 @@ body {
     gap: 12px;
   }
 
-  /* Planner — all 4 weeks stacked vertically on desktop */
-  #planner-grid { display: block; }
-  .planner-week-section { margin-bottom: 2rem; }
-  .planner-week-header {
-    font-size: .8rem; font-weight: 700; letter-spacing: .06em;
-    text-transform: uppercase; color: var(--dk-green);
-    padding: 6px 0 4px; border-bottom: 2px solid var(--lt-green); margin-bottom: 8px;
-  }
-  .planner-week-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-    gap: 10px;
-  }
-  .planner-week-grid .planner-day { margin-bottom: 0; overflow: visible; }
-  /* Rounded corners when overflow:visible removes clip */
-  .planner-week-grid .planner-day-header { border-radius: var(--radius) var(--radius) 0 0; }
-  .planner-week-grid .meal-slot:last-child { border-radius: 0 0 var(--radius) var(--radius); }
-  .meal-label { font-size: .65rem; }
-  .btn-mini-generate {
-    float: right;
-    font-size: 0.75rem;
-    padding: 2px 8px;
-    background: var(--lt-green);
-    border: 1px solid var(--border);
-    border-radius: 4px;
-    cursor: pointer;
-    line-height: 1.4;
-    color: var(--dk-green);
-  }
-  .week-tabs { display: none; }
 }
