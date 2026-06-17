@@ -86,7 +86,7 @@ const Data = (() => {
     const pantry = _db.pantry || [];
     const exact = pantry.find(p => p.ingredient.toLowerCase() === lower);
     if (exact) return exact;
-    return pantry.find(p => lower.includes(p.ingredient.toLowerCase())) || null;
+    return pantry.find(p => p.ingredient.toLowerCase().includes(lower)) || null;
   }
 
   function getShoppingList(){ return _db.shoppingList || []; }

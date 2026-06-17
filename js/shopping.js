@@ -4,7 +4,7 @@
 
 const Shopping = (() => {
 
-  let _userUnchecked = new Set(); // item indices the user explicitly unticked
+  let _userUnchecked = new Set(); // ingredient names (lowercase) the user explicitly unticked
   let _logItems = []; // items captured when Log Purchase modal was opened
 
   // Simple category guesser
@@ -179,7 +179,7 @@ const Shopping = (() => {
     const preItems = Data.getShoppingList();
     preItems.forEach((item, idx) => {
       if (item.checked) return;
-      if (_userUnchecked.has(idx)) return; // user explicitly unticked — respect that
+      if (_userUnchecked.has(item.name.toLowerCase().trim())) return; // user explicitly unticked
       const pantry = Data.getPantry();
       const pantryItem = pantry.find(p => p.ingredient.toLowerCase() === item.name.toLowerCase().trim());
       if (!pantryItem || pantryItem.qty <= 0) return;
@@ -264,17 +264,19 @@ const Shopping = (() => {
   function toggle(idx) {
     Data.toggleShoppingItem(idx);
     const items = Data.getShoppingList();
-    if (items[idx] && !items[idx].checked) {
-      _userUnchecked.add(idx); // user manually unticked — don't re-auto-tick
-    } else {
-      _userUnchecked.delete(idx); // user re-checked it — allow auto-tick again
+    const name = (items[idx]?.name || '').toLowerCase().trim();
+    if (name) {
+      if (!items[idx].checked) {
+        _userUnchecked.add(name); // user manually unticked — don't re-auto-tick
+      } else {
+        _userUnchecked.delete(name); // user re-checked it — allow auto-tick again
+      }
     }
     const el = document.getElementById('shop-item-' + idx);
     if (el) el.classList.toggle('checked', items[idx]?.checked);
   }
 
   function clearChecked() {
-    _userUnchecked.clear(); // fresh list state — reset user overrides
     const items = Data.getShoppingList().filter(i => !i.checked);
     Data.setShoppingList(items);
     render();
