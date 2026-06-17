@@ -72,7 +72,7 @@ const Shopping = (() => {
       </div>`;
     }
     const cost = Data.lookupPrice(item.name, item.qty, item.unit);
-    const costHtml = cost != null
+    const costHtml = cost != null && cost > 0
       ? `<span class="shop-price-cost">R ${cost.toFixed(2)}</span><span class="shop-price-sep">·</span>`
       : '';
     // Show "avg" when multiple prices exist, else show single price with retailer
