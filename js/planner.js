@@ -22,15 +22,21 @@ const Planner = (() => {
       const slotRecipes = (savedRecipe && !filteredRecipes.find(r => r.id === selected))
         ? [savedRecipe, ...filteredRecipes]
         : filteredRecipes;
+      const kcalHtml = savedRecipe
+        ? `<div class="slot-kcal">${savedRecipe.kcalTotal != null ? Math.round(savedRecipe.kcalTotal / (savedRecipe.servings || 1)) + ' kcal' : '— kcal'}</div>`
+        : '';
       return `
       <div class="meal-slot">
         <span class="meal-label">${MEAL_LABELS[meal]}</span>
-        <select onchange="Planner.setSlot(${week},'${day}','${meal}',this.value)">
-          <option value="" ${!selected ? 'selected' : ''}>— none —</option>
-          ${slotRecipes.map(r =>
-            `<option value="${r.id}" ${selected === r.id ? 'selected' : ''}>${r.name}</option>`
-          ).join('')}
-        </select>
+        <div class="meal-slot-right">
+          <select onchange="Planner.setSlot(${week},'${day}','${meal}',this.value)">
+            <option value="" ${!selected ? 'selected' : ''}>— none —</option>
+            ${slotRecipes.map(r =>
+              `<option value="${r.id}" ${selected === r.id ? 'selected' : ''}>${r.name}</option>`
+            ).join('')}
+          </select>
+          ${kcalHtml}
+        </div>
       </div>`;
     }).join('');
     return `

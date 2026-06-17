@@ -324,12 +324,14 @@ body {
   font-size: .72rem; font-weight: 700; color: var(--text-muted);
   text-transform: uppercase; letter-spacing: .06em; min-width: 58px;
 }
+.meal-slot-right { display: flex; flex-direction: column; flex: 1; gap: 2px; }
 .meal-slot select {
-  flex: 1; min-width: 0; border: 1.5px solid var(--border); border-radius: 8px;
+  width: 100%; min-width: 0; border: 1.5px solid var(--border); border-radius: 8px;
   padding: 6px 8px; font-size: .85rem; background: var(--bg);
-  color: var(--text); outline: none; max-width: 100%;
+  color: var(--text); outline: none;
 }
 .meal-slot select:focus { border-color: var(--md-green); }
+.slot-kcal { font-size: 0.72rem; color: var(--text-muted); }
 .planner-actions { margin-top: 14px; display: flex; gap: 8px; }
 .planner-filter-bar { margin: 8px 0 10px; }
 .planner-filter-bar input {
