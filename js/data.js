@@ -31,7 +31,7 @@ const Data = (() => {
         });
       });
       if (!_db.priceBook) _db.priceBook = [];
-      // Migrate v1 flat priceBook to v2 nested format
+      // Migrate v1 flat priceBook to v2 nested format — v1 data discarded intentionally, re-seed starter prices
       if (_db.priceBook.length > 0 && _db.priceBook[0].unit !== undefined) {
         _db.priceBook = [];
         loadStarterPrices();
@@ -523,7 +523,7 @@ const Data = (() => {
       { ingredient: 'thyme',         unit: '100g', pricePerUnit: 32  },
     ];
     _db.priceBook = flat.map(f => ({
-      ingredient: f.ingredient,
+      ingredient: f.ingredient.toLowerCase().trim(),
       prices: [{ unit: f.unit, pricePerUnit: f.pricePerUnit, retailer: '', updatedDate: d }],
     }));
     save();
