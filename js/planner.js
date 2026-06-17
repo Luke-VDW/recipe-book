@@ -187,39 +187,71 @@ const Planner = (() => {
   }
 
   function generateShoppingList() {
-    const plan   = Data.getPlan();
-    const wk     = plan['week' + _currentWeek] || {};
+    const plan = Data.getPlan();
+    const wk   = plan['week' + _currentWeek] || {};
+    const treats = wk.treats || [];
 
-    const usedIds = new Set();
+    // Count how many meal slots each recipe fills this week
+    const slotCounts = {}; // recipeId → number of slots
     Data.DAYS.forEach(d => {
       Data.MEALS.forEach(m => {
         const id = (wk[d] || {})[m];
-        if (id) usedIds.add(id);
+        if (id) slotCounts[id] = (slotCounts[id] || 0) + 1;
       });
     });
 
-    if (usedIds.size === 0) {
-      App.toast('No meals planned for this week.', 'warn');
+    if (Object.keys(slotCounts).length === 0 && treats.length === 0) {
+      App.toast('No meals or treats planned for this week.', 'warn');
       return;
     }
 
-    const agg = {};
-    usedIds.forEach(id => {
+    const agg = {}; // key: "name|unit" → { name, unit, qty, sources }
+
+    // Meal slots — scale by (slots / base servings)
+    Object.entries(slotCounts).forEach(([id, slotCount]) => {
       const r = Data.getRecipeById(id);
       if (!r) return;
-      const ings = Recipes.parseIngredients(r.ingredients);
-      ings.forEach(i => {
+      const baseServings = r.servings || 1;
+      const multiplier   = slotCount / baseServings;
+      Recipes.parseIngredients(r.ingredients).forEach(i => {
         const key = `${i.name.toLowerCase()}|${i.unit}`;
         if (!agg[key]) agg[key] = { name: i.name, unit: i.unit, qty: 0, sources: [] };
-        agg[key].qty += parseFloat(i.qty) || 0;
-        agg[key].sources.push({ recipe: r.name, qty: parseFloat(i.qty) || 0, unit: i.unit });
+        const scaledQty = (parseFloat(i.qty) || 0) * multiplier;
+        agg[key].qty += scaledQty;
+        agg[key].sources.push({
+          recipe:  r.name,
+          qty:     scaledQty,
+          unit:    i.unit,
+          context: `${slotCount} of ${baseServings}-serving recipe`,
+        });
+      });
+    });
+
+    // Treats — scale by batch count
+    treats.forEach(treat => {
+      const r = Data.getRecipeById(treat.recipeId);
+      if (!r) return;
+      const batches = treat.batches || 1;
+      Recipes.parseIngredients(r.ingredients).forEach(i => {
+        const key = `${i.name.toLowerCase()}|${i.unit}`;
+        if (!agg[key]) agg[key] = { name: i.name, unit: i.unit, qty: 0, sources: [] };
+        const scaledQty = (parseFloat(i.qty) || 0) * batches;
+        agg[key].qty += scaledQty;
+        agg[key].sources.push({
+          recipe:  r.name,
+          qty:     scaledQty,
+          unit:    i.unit,
+          context: `${batches} batch${batches !== 1 ? 'es' : ''}`,
+        });
       });
     });
 
     const items = Object.values(agg).map(i => ({
-      name: i.name, unit: i.unit,
-      qty: i.qty > 0 ? i.qty : '',
-      sources: i.sources, checked: false,
+      name:    i.name,
+      unit:    i.unit,
+      qty:     i.qty > 0 ? i.qty : '',
+      sources: i.sources,
+      checked: false,
     }));
 
     if (items.length === 0) {
