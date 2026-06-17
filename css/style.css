@@ -680,45 +680,90 @@ body {
 }
 
 /* ── Price Book view ─────────────────────────────────── */
-.pb-row {
+.pb-card {
+  background: #fff;
+  border: 1px solid #e8e8e8;
+  border-radius: 10px;
+  margin-bottom: 10px;
+  overflow: hidden;
+}
+.pb-card-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 10px 16px;
-  border-bottom: 1px solid #e8e8e8;
+  padding: 10px 12px;
+  background: var(--lt-green);
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.pb-card-name {
+  font-weight: 700;
+  font-size: 0.9rem;
+  text-transform: capitalize;
+  color: var(--dk-green);
+}
+.pb-card-actions {
+  display: flex;
+  gap: 6px;
+}
+.pb-price-rows {
+  padding: 0 12px;
+}
+.pb-price-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 0;
+  border-bottom: 1px solid #f0f0f0;
   gap: 8px;
 }
-.pb-row:last-child { border-bottom: none; }
-.pb-row-main {
+.pb-price-row:last-child { border-bottom: none; }
+.pb-price-row-info {
   display: flex;
   align-items: center;
   gap: 8px;
-  flex: 1;
-  flex-wrap: wrap;
-  min-width: 0;
-}
-.pb-ingredient {
-  font-weight: 600;
-  font-size: 0.9rem;
-  text-transform: capitalize;
-}
-.pb-price {
   font-size: 0.85rem;
-  color: var(--md-green);
-  font-weight: 600;
+  flex-wrap: wrap;
+  flex: 1;
 }
-.pb-retailer {
-  font-size: 0.75rem;
+.pb-price-val {
+  font-weight: 600;
+  color: var(--md-green);
+}
+.pb-retailer-tag {
+  font-size: 0.72rem;
   background: var(--lt-green);
   color: var(--dk-green);
   border-radius: 4px;
   padding: 1px 6px;
   font-weight: 600;
 }
-.pb-row-actions {
+.pb-price-date {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  opacity: 0.7;
+}
+.pb-price-row-actions {
   display: flex;
-  gap: 6px;
+  gap: 4px;
   flex-shrink: 0;
+}
+.pb-add-ingredient-btn {
+  width: 100%;
+  margin-top: 8px;
+  padding: 12px;
+  background: none;
+  border: 2px dashed #ccc;
+  border-radius: 10px;
+  font-size: 0.9rem;
+  color: var(--text-muted);
+  cursor: pointer;
+  text-align: center;
+  box-sizing: border-box;
+}
+.pb-add-ingredient-btn:hover {
+  border-color: var(--md-green);
+  color: var(--md-green);
 }
 .btn-danger-mini {
   background: #fee2e2;
