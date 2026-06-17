@@ -301,6 +301,25 @@ const Recipes = (() => {
         <label>Source URL</label>
         <input id="rf-src" type="url" value="${r.source || ''}" placeholder="https://…" />
       </div>
+      <div class="form-group">
+        <label>Calories</label>
+        <input type="hidden" id="rf-kcal" value="${r.kcalTotal || ''}" />
+        <div id="kcal-display" class="kcal-display">
+          ${r.kcalTotal
+            ? `<span class="kcal-value">${r.kcalTotal} kcal · ${Math.round(r.kcalTotal / (r.servings || 1))} kcal/serving</span>
+               <button type="button" class="btn-mini" onclick="Recipes.editCalories()">Edit</button>
+               <button type="button" id="btn-calc-kcal" class="btn-mini" onclick="Recipes.calculateCalories()">Recalculate</button>`
+            : `<span class="kcal-value kcal-unknown">—</span>
+               <button type="button" class="btn-mini" onclick="Recipes.editCalories()">Enter manually</button>
+               <button type="button" id="btn-calc-kcal" class="btn-mini btn-mini-primary" onclick="Recipes.calculateCalories()">Calculate</button>`
+          }
+        </div>
+        <div id="kcal-edit-row" class="kcal-edit-row" style="display:none">
+          <input type="number" id="rf-kcal-edit" min="0" placeholder="e.g. 1840" />
+          <button type="button" class="btn-mini btn-mini-primary" onclick="Recipes.saveCalories()">Save</button>
+          <button type="button" class="btn-mini" onclick="Recipes.cancelEditCalories()">Cancel</button>
+        </div>
+      </div>
       <div class="modal-actions">
         <button class="btn-secondary" onclick="App.closeModal()">Cancel</button>
         <button class="btn-primary" onclick="Recipes.saveModal('${r.id || ''}')">
@@ -314,6 +333,7 @@ const Recipes = (() => {
   function saveModal(existingId) {
     const name = document.getElementById('rf-name').value.trim();
     if (!name) { alert('Please enter a recipe name.'); return; }
+    const kcalRaw = parseInt(document.getElementById('rf-kcal')?.value);
     const recipe = {
       id: existingId || undefined,
       name,
@@ -325,6 +345,7 @@ const Recipes = (() => {
       method: document.getElementById('rf-method').value.trim(),
       tags: document.getElementById('rf-tags').value.trim(),
       source: document.getElementById('rf-src').value.trim(),
+      kcalTotal: isNaN(kcalRaw) ? null : kcalRaw,
     };
     if (existingId) {
       Data.updateRecipe(recipe);
@@ -339,5 +360,96 @@ const Recipes = (() => {
     render();
   }
 
-  return { render, filter, openDetail, openAddModal, openEditModal, saveModal, confirmDelete, parseIngredients, setServings, openAddToPlanModal, confirmAddToPlan };
+  function _updateKcalDisplay(kcal, servings) {
+    const el = document.getElementById('kcal-display');
+    if (!el) return;
+    if (kcal) {
+      const perServing = Math.round(kcal / (servings || 1));
+      el.innerHTML = `
+        <span class="kcal-value">${kcal} kcal · ${perServing}/serving</span>
+        <button type="button" class="btn-mini" onclick="Recipes.editCalories()">Edit</button>
+        <button type="button" id="btn-calc-kcal" class="btn-mini" onclick="Recipes.calculateCalories()">Recalculate</button>`;
+    } else {
+      el.innerHTML = `
+        <span class="kcal-value kcal-unknown">—</span>
+        <button type="button" class="btn-mini" onclick="Recipes.editCalories()">Enter manually</button>
+        <button type="button" id="btn-calc-kcal" class="btn-mini btn-mini-primary" onclick="Recipes.calculateCalories()">Calculate</button>`;
+    }
+  }
+
+  function editCalories() {
+    const currentVal = document.getElementById('rf-kcal')?.value;
+    const editInput  = document.getElementById('rf-kcal-edit');
+    if (editInput && currentVal) editInput.value = currentVal;
+    const display = document.getElementById('kcal-display');
+    const editRow = document.getElementById('kcal-edit-row');
+    if (display) display.style.display = 'none';
+    if (editRow) editRow.style.display = 'flex';
+    if (editInput) editInput.focus();
+  }
+
+  function cancelEditCalories() {
+    const display = document.getElementById('kcal-display');
+    const editRow = document.getElementById('kcal-edit-row');
+    if (display) display.style.display = 'flex';
+    if (editRow) editRow.style.display = 'none';
+  }
+
+  function saveCalories() {
+    const raw = parseInt(document.getElementById('rf-kcal-edit')?.value);
+    if (isNaN(raw) || raw < 0) { App.toast('Enter a valid calorie amount.', 'warn'); return; }
+    const hiddenInput = document.getElementById('rf-kcal');
+    if (hiddenInput) hiddenInput.value = raw;
+    const servings = parseInt(document.getElementById('rf-srv')?.value) || 1;
+    _updateKcalDisplay(raw, servings);
+    cancelEditCalories();
+  }
+
+  async function calculateCalories() {
+    const ingredientsText = (document.getElementById('rf-ing')?.value || '').trim();
+    if (!ingredientsText) { App.toast('Add ingredients first.', 'warn'); return; }
+    const apiKey = localStorage.getItem('spoonacularKey');
+    if (!apiKey) { App.toast('No Spoonacular key — go to Settings to add one.', 'warn'); return; }
+
+    const btn = document.getElementById('btn-calc-kcal');
+    const origLabel = btn?.textContent;
+    if (btn) { btn.disabled = true; btn.textContent = 'Calculating…'; }
+
+    try {
+      const ingredientList = ingredientsText.split(';').map(s => s.trim()).filter(Boolean).join('\n');
+      const formData = new FormData();
+      formData.append('ingredientList', ingredientList);
+      formData.append('servings', '1');
+      formData.append('includeNutrition', 'true');
+
+      const res = await fetch(
+        `https://api.spoonacular.com/recipes/parseIngredients?apiKey=${encodeURIComponent(apiKey)}`,
+        { method: 'POST', body: formData }
+      );
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const parsed = await res.json();
+
+      let totalKcal = 0;
+      parsed.forEach(ing => {
+        const cal = (ing.nutrition?.nutrients || []).find(n => n.name === 'Calories');
+        if (cal) totalKcal += cal.amount;
+      });
+      totalKcal = Math.round(totalKcal);
+
+      const hiddenInput = document.getElementById('rf-kcal');
+      if (hiddenInput) hiddenInput.value = totalKcal;
+      const servings = parseInt(document.getElementById('rf-srv')?.value) || 1;
+      _updateKcalDisplay(totalKcal, servings);
+      App.toast(`Calories calculated: ${totalKcal} kcal ✓`);
+    } catch (err) {
+      console.error('Calorie calculation error:', err);
+      App.toast('Calorie calculation failed — check your Spoonacular key.', 'warn');
+    } finally {
+      if (btn) { btn.disabled = false; if (origLabel) btn.textContent = origLabel; }
+    }
+  }
+
+  return { render, filter, openDetail, openAddModal, openEditModal, saveModal, confirmDelete,
+           parseIngredients, setServings, openAddToPlanModal, confirmAddToPlan,
+           editCalories, cancelEditCalories, saveCalories, calculateCalories };
 })();
