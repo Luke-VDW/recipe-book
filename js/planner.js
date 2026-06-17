@@ -46,6 +46,97 @@ const Planner = (() => {
     </div>`;
   }
 
+  function _calcRecipeCost(recipe) {
+    const ingredients = Recipes.parseIngredients(recipe.ingredients);
+    let total = 0;
+    let partial = false;
+    for (const ing of ingredients) {
+      const cost = Data.lookupPrice(ing.name, ing.qty, ing.unit);
+      if (cost === null) partial = true;
+      else total += cost;
+    }
+    return { cost: Math.round((total / (recipe.servings || 1)) * 100) / 100, partial };
+  }
+
+  function _renderCostSection(wk, treats) {
+    let hasMissingPrice = false;
+
+    const dayRows = Data.DAYS.map(day => {
+      const dayData = wk[day] || {};
+      let dayTotal = 0;
+      const parts = [];
+      Data.MEALS.forEach(meal => {
+        const id = dayData[meal];
+        if (!id) return;
+        const r = Data.getRecipeById(id);
+        if (!r) return;
+        const { cost, partial } = _calcRecipeCost(r);
+        const abbrev = meal[0].toUpperCase();
+        if (partial) hasMissingPrice = true;
+        dayTotal += cost;
+        parts.push(`${abbrev}:${partial ? '~' : ''}R${cost.toFixed(0)}`);
+      });
+      return { label: DAY_LABELS[day], parts, dayTotal };
+    });
+
+    const mealsTotal = dayRows.reduce((sum, d) => sum + d.dayTotal, 0);
+
+    let treatsTotal = 0;
+    const treatRows = treats.map(t => {
+      const r = Data.getRecipeById(t.recipeId);
+      if (!r) return null;
+      const { cost, partial } = _calcRecipeCost(r);
+      const total = cost * (t.batches || 1);
+      treatsTotal += total;
+      if (partial) hasMissingPrice = true;
+      return { name: r.name, batches: t.batches || 1, cost: total, partial };
+    }).filter(Boolean);
+
+    const weekTotal = mealsTotal + treatsTotal;
+    const hasContent = dayRows.some(d => d.parts.length > 0) || treatRows.length > 0;
+    if (!hasContent) return '';
+
+    const dayRowsHtml = dayRows.map(d => `
+      <tr>
+        <td class="summary-day">${d.label}</td>
+        <td class="summary-meals">${d.parts.join(' · ') || '<span style="color:var(--text-muted)">—</span>'}</td>
+        <td class="summary-day-total">${d.dayTotal > 0 ? 'R ' + d.dayTotal.toFixed(2) : (d.parts.length ? '—' : '')}</td>
+      </tr>`).join('');
+
+    const treatSectionHtml = treatRows.length ? `
+      <tr class="summary-section-header"><td colspan="3">Treats</td></tr>
+      ${treatRows.map(t => `
+      <tr>
+        <td colspan="2" class="summary-treat-name">${t.name} ×${t.batches}</td>
+        <td class="summary-day-total">${t.partial ? '~' : ''}R ${t.cost.toFixed(2)}</td>
+      </tr>`).join('')}
+      <tr class="summary-subtotal">
+        <td colspan="2">Treats total</td>
+        <td class="summary-day-total">${treatsTotal > 0 ? 'R ' + treatsTotal.toFixed(2) : '—'}</td>
+      </tr>` : '';
+
+    const footnote = hasMissingPrice
+      ? `<p class="summary-footnote">~ Some ingredients unpriced — open Price Book to add missing prices.</p>` : '';
+
+    return `
+      <div class="summary-header">Week ${_currentWeek} — Estimated Cost</div>
+      <table class="summary-table">
+        <tbody>
+          ${dayRowsHtml}
+          <tr class="summary-subtotal">
+            <td colspan="2">Meals total</td>
+            <td class="summary-day-total">${mealsTotal > 0 ? 'R ' + mealsTotal.toFixed(2) : '—'}</td>
+          </tr>
+          ${treatSectionHtml}
+          <tr class="summary-grand-total">
+            <td colspan="2">Week total</td>
+            <td class="summary-day-total">${weekTotal > 0 ? 'R ' + weekTotal.toFixed(2) : '—'}</td>
+          </tr>
+        </tbody>
+      </table>
+      ${footnote}`;
+  }
+
   function render() {
     document.querySelectorAll('.inner-tab').forEach(t =>
       t.classList.toggle('active', t.dataset.tab === _currentTab)
@@ -219,7 +310,8 @@ const Planner = (() => {
           </tr>
         </tbody>
       </table>
-      ${footnote}`;
+      ${footnote}
+      ${_renderCostSection(wk, treats)}`;
   }
 
   function filterRecipes() {
