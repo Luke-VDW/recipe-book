@@ -98,6 +98,9 @@ const Planner = (() => {
     const rows = treats.map((t, i) => {
       const r = Data.getRecipeById(t.recipeId);
       if (!r) return '';
+      const treatKcal = r.kcalTotal != null
+        ? (r.kcalTotal * t.batches) + ' kcal'
+        : '— kcal';
       return `
       <div class="treat-row">
         <span class="treat-name">${r.name}</span>
@@ -106,6 +109,7 @@ const Planner = (() => {
           <span>${t.batches} batch${t.batches !== 1 ? 'es' : ''}</span>
           <button class="stepper-btn" onclick="Planner.updateTreatBatches(${i}, 1)">+</button>
         </div>
+        <span class="treat-kcal">${treatKcal}</span>
         <button class="treat-remove" onclick="Planner.removeTreat(${i})">×</button>
       </div>`;
     }).filter(Boolean).join('');

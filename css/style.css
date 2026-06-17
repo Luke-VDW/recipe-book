@@ -294,6 +294,8 @@ body {
   font-size: 0.88rem;
   color: var(--text-muted);
 }
+.treat-kcal { font-size: 0.82rem; color: var(--text-muted); min-width: 70px; text-align: right; }
+
 .treat-remove {
   background: none;
   border: none;
