@@ -681,9 +681,9 @@ body {
 
 /* ── Price Book view ─────────────────────────────────── */
 .pb-card {
-  background: #fff;
-  border: 1px solid #e8e8e8;
-  border-radius: 10px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
   margin-bottom: 10px;
   overflow: hidden;
 }
@@ -705,6 +705,7 @@ body {
 .pb-card-actions {
   display: flex;
   gap: 6px;
+  flex-shrink: 0;
 }
 .pb-price-rows {
   padding: 0 12px;
@@ -714,7 +715,7 @@ body {
   align-items: center;
   justify-content: space-between;
   padding: 8px 0;
-  border-bottom: 1px solid #f0f0f0;
+  border-bottom: 1px solid var(--border);
   gap: 8px;
 }
 .pb-price-row:last-child { border-bottom: none; }
@@ -741,7 +742,6 @@ body {
 .pb-price-date {
   font-size: 0.72rem;
   color: var(--text-muted);
-  opacity: 0.7;
 }
 .pb-price-row-actions {
   display: flex;
@@ -754,7 +754,7 @@ body {
   padding: 12px;
   background: none;
   border: 2px dashed #ccc;
-  border-radius: 10px;
+  border-radius: var(--radius);
   font-size: 0.9rem;
   color: var(--text-muted);
   cursor: pointer;
