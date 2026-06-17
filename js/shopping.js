@@ -4,6 +4,9 @@
 
 const Shopping = (() => {
 
+  let _userUnchecked = new Set(); // item indices the user explicitly unticked
+  let _logItems = []; // items captured when Log Purchase modal was opened
+
   // Simple category guesser
   const CAT_MAP = {
     'produce':    ['onion','shallot','leek','spring onion','scallion','garlic','tomato','potato',
@@ -110,11 +113,7 @@ const Shopping = (() => {
     return `<div class="pantry-partial-stock">In pantry: ${_fmtPantryQty(pantryItem.qty)} ${_esc(pantryItem.unit)}</div>`;
   }
 
-  function _fmtPantryQty(q) {
-    const n = parseFloat(q);
-    if (isNaN(n)) return '0';
-    return n % 1 === 0 ? String(n) : n.toFixed(2).replace(/\.?0+$/, '');
-  }
+  function _fmtPantryQty(q) { return fmtQty(q) || '0'; }
 
   function editPrice(idx) {
     const items = Data.getShoppingList();
@@ -180,9 +179,12 @@ const Shopping = (() => {
     const preItems = Data.getShoppingList();
     preItems.forEach((item, idx) => {
       if (item.checked) return;
-      const pantryItem = Data.getPantryItem(item.name);
+      if (_userUnchecked.has(idx)) return; // user explicitly unticked — respect that
+      const pantry = Data.getPantry();
+      const pantryItem = pantry.find(p => p.ingredient.toLowerCase() === item.name.toLowerCase().trim());
       if (!pantryItem || pantryItem.qty <= 0) return;
-      if (pantryItem.unit === item.unit && pantryItem.qty >= (item.qty || 0)) {
+      if (!item.qty) return; // skip items with no specified quantity
+      if (pantryItem.unit === item.unit && pantryItem.qty >= item.qty) {
         Data.toggleShoppingItem(idx);
       }
     });
@@ -261,13 +263,18 @@ const Shopping = (() => {
 
   function toggle(idx) {
     Data.toggleShoppingItem(idx);
-    // Update just this item's style without full re-render
     const items = Data.getShoppingList();
+    if (items[idx] && !items[idx].checked) {
+      _userUnchecked.add(idx); // user manually unticked — don't re-auto-tick
+    } else {
+      _userUnchecked.delete(idx); // user re-checked it — allow auto-tick again
+    }
     const el = document.getElementById('shop-item-' + idx);
     if (el) el.classList.toggle('checked', items[idx]?.checked);
   }
 
   function clearChecked() {
+    _userUnchecked.clear(); // fresh list state — reset user overrides
     const items = Data.getShoppingList().filter(i => !i.checked);
     Data.setShoppingList(items);
     render();
@@ -275,7 +282,8 @@ const Shopping = (() => {
   }
 
   function openLogPurchase() {
-    const items = Data.getShoppingList().filter(i => !i.checked);
+    _logItems = Data.getShoppingList().filter(i => !i.checked);
+    const items = _logItems;
     if (items.length === 0) {
       App.toast('Nothing to log — all items are already ticked', 'warn');
       return;
@@ -302,7 +310,7 @@ const Shopping = (() => {
   }
 
   function confirmPurchase() {
-    const items = Data.getShoppingList().filter(i => !i.checked);
+    const items = _logItems;
     items.forEach((item, i) => {
       const qty = parseFloat(document.getElementById('log-qty-' + i)?.value) || 0;
       if (qty > 0) {
