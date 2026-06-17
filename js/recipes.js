@@ -366,7 +366,7 @@ const Recipes = (() => {
     if (kcal) {
       const perServing = Math.round(kcal / (servings || 1));
       el.innerHTML = `
-        <span class="kcal-value">${kcal} kcal · ${perServing}/serving</span>
+        <span class="kcal-value">${kcal} kcal · ${perServing} kcal/serving</span>
         <button type="button" class="btn-mini" onclick="Recipes.editCalories()">Edit</button>
         <button type="button" id="btn-calc-kcal" class="btn-mini" onclick="Recipes.calculateCalories()">Recalculate</button>`;
     } else {
@@ -380,7 +380,7 @@ const Recipes = (() => {
   function editCalories() {
     const currentVal = document.getElementById('rf-kcal')?.value;
     const editInput  = document.getElementById('rf-kcal-edit');
-    if (editInput && currentVal) editInput.value = currentVal;
+    if (editInput) editInput.value = currentVal || '';
     const display = document.getElementById('kcal-display');
     const editRow = document.getElementById('kcal-edit-row');
     if (display) display.style.display = 'none';
