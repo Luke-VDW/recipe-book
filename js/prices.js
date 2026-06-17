@@ -4,6 +4,8 @@
 
 const PriceBook = (() => {
   let _filter = '';
+  let _modalIngredientName = '';
+  let _modalPriceIdx = null;
 
   const UNITS = ['g','100g','kg','ml','100ml','l','item','tsp','tbsp'];
 
@@ -23,23 +25,36 @@ const PriceBook = (() => {
       return;
     }
 
-    el.innerHTML = filtered.map(entry => {
-      const realIdx = entries.indexOf(entry);
-      const retailer = entry.retailer
-        ? `<span class="pb-retailer">${_esc(entry.retailer)}</span>` : '';
+    el.innerHTML = filtered.map(card => {
+      const realIdx = entries.indexOf(card);
+      const priceRows = card.prices.map((p, pIdx) => {
+        const retailerHtml = p.retailer
+          ? `<span class="pb-retailer-tag">${_esc(p.retailer)}</span>` : '';
+        return `
+          <div class="pb-price-row">
+            <div class="pb-price-row-info">
+              <span class="pb-price-val">R ${p.pricePerUnit.toFixed(2)}/${p.unit}</span>
+              ${retailerHtml}
+              <span class="pb-price-date">${_fmtDate(p.updatedDate)}</span>
+            </div>
+            <div class="pb-price-row-actions">
+              <button class="btn-mini" onclick="PriceBook.openEditPriceForm(${realIdx}, ${pIdx})">Edit</button>
+              <button class="btn-mini btn-danger-mini" onclick="PriceBook.removePrice(${realIdx}, ${pIdx})">✕</button>
+            </div>
+          </div>`;
+      }).join('');
       return `
-      <div class="pb-row">
-        <div class="pb-row-main">
-          <span class="pb-ingredient">${_esc(entry.ingredient)}</span>
-          <span class="pb-price">R ${entry.pricePerUnit.toFixed(2)}/${entry.unit}</span>
-          ${retailer}
-        </div>
-        <div class="pb-row-actions">
-          <button class="btn-mini" onclick="PriceBook.openEditForm(${realIdx})">Edit</button>
-          <button class="btn-mini btn-danger-mini" onclick="PriceBook.remove(${realIdx})">✕</button>
-        </div>
-      </div>`;
-    }).join('');
+        <div class="pb-card">
+          <div class="pb-card-header">
+            <span class="pb-card-name">${_esc(card.ingredient)}</span>
+            <div class="pb-card-actions">
+              <button class="btn-mini" onclick="PriceBook.openAddPriceForm(${realIdx})">＋ Add price</button>
+              <button class="btn-mini btn-danger-mini" onclick="PriceBook.removeIngredient(${realIdx})">✕ Remove</button>
+            </div>
+          </div>
+          <div class="pb-price-rows">${priceRows}</div>
+        </div>`;
+    }).join('') + `<button class="pb-add-ingredient-btn" onclick="PriceBook.openAddIngredientForm()">＋ Add ingredient</button>`;
   }
 
   function filter() {
@@ -47,80 +62,161 @@ const PriceBook = (() => {
     render();
   }
 
-  function openAddForm() {
-    _openForm(null, null);
-  }
-
-  function openEditForm(idx) {
-    const entry = Data.getPriceBook()[idx];
-    if (entry) _openForm(entry, idx);
-  }
-
-  function _openForm(entry, idx) {
-    const e = entry || {};
+  function openAddIngredientForm() {
+    _modalIngredientName = '';
+    _modalPriceIdx = null;
     const unitOpts = UNITS.map(u =>
-      `<option value="${u}" ${(e.unit || 'item') === u ? 'selected' : ''}>${u}</option>`
+      `<option value="${u}" ${u === 'item' ? 'selected' : ''}>${u}</option>`
     ).join('');
     document.getElementById('modal-content').innerHTML = `
-    <h3>${entry ? 'Edit Price' : 'Add Price'}</h3>
-    <div class="form-group">
-      <label>Ingredient</label>
-      <input id="pb-form-ing" type="text" value="${_esc(e.ingredient || '')}"
-        placeholder="e.g. beef mince" ${entry ? '' : 'autofocus'} />
-    </div>
-    <div class="form-row">
+      <h3>Add Ingredient</h3>
       <div class="form-group">
-        <label>Price (R)</label>
-        <input id="pb-form-price" type="number" step="0.01" min="0"
-          value="${e.pricePerUnit != null ? e.pricePerUnit : ''}" placeholder="0.00" />
+        <label>Ingredient</label>
+        <input id="pb-form-ing" type="text" placeholder="e.g. beef mince" autofocus />
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Price (R)</label>
+          <input id="pb-form-price" type="number" step="0.01" min="0" placeholder="0.00" />
+        </div>
+        <div class="form-group">
+          <label>Per</label>
+          <select id="pb-form-unit">${unitOpts}</select>
+        </div>
       </div>
       <div class="form-group">
-        <label>Per</label>
-        <select id="pb-form-unit">${unitOpts}</select>
+        <label>Retailer (optional)</label>
+        <input id="pb-form-retailer" type="text" placeholder="e.g. Checkers" maxlength="30" />
       </div>
-    </div>
-    <div class="form-group">
-      <label>Retailer (optional)</label>
-      <input id="pb-form-retailer" type="text" value="${_esc(e.retailer || '')}"
-        placeholder="e.g. Checkers" maxlength="30" />
-    </div>
-    <div class="modal-actions">
-      <button class="btn-secondary" onclick="App.closeModal()">Cancel</button>
-      <button class="btn-primary" onclick="PriceBook.saveForm(${idx !== null ? idx : 'null'})">Save</button>
-    </div>`;
+      <div class="modal-actions">
+        <button class="btn-secondary" onclick="App.closeModal()">Cancel</button>
+        <button class="btn-primary" onclick="PriceBook.saveNewIngredient()">Save</button>
+      </div>`;
     document.getElementById('modal-overlay').classList.remove('hidden');
   }
 
-  function saveForm(idx) {
+  function saveNewIngredient() {
     const ingredient = (document.getElementById('pb-form-ing')?.value || '').trim().toLowerCase();
     const price = parseFloat(document.getElementById('pb-form-price')?.value);
     const unit = document.getElementById('pb-form-unit')?.value || 'item';
     const retailer = (document.getElementById('pb-form-retailer')?.value || '').trim();
     if (!ingredient) { App.toast('Enter an ingredient name', 'warn'); return; }
     if (isNaN(price) || price < 0) { App.toast('Enter a valid price', 'warn'); return; }
-    if (idx !== null) Data.removePriceEntry(idx);
-    Data.setPriceEntry({
-      ingredient,
-      unit,
-      pricePerUnit: price,
-      retailer,
-      updatedDate: new Date().toISOString().slice(0, 10),
-    });
+    Data.setPriceEntry(ingredient, { unit, pricePerUnit: price, retailer });
+    App.closeModal();
+    render();
+    App.toast('Ingredient added ✓');
+  }
+
+  function openAddPriceForm(ingredientIdx) {
+    const entries = Data.getPriceBook();
+    const card = entries[ingredientIdx];
+    if (!card) return;
+    _modalIngredientName = card.ingredient;
+    _modalPriceIdx = null;
+    const unitOpts = UNITS.map(u =>
+      `<option value="${u}" ${u === 'item' ? 'selected' : ''}>${u}</option>`
+    ).join('');
+    document.getElementById('modal-content').innerHTML = `
+      <h3>Add Price — <span style="text-transform:capitalize">${_esc(card.ingredient)}</span></h3>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Price (R)</label>
+          <input id="pb-form-price" type="number" step="0.01" min="0" placeholder="0.00" autofocus />
+        </div>
+        <div class="form-group">
+          <label>Per</label>
+          <select id="pb-form-unit">${unitOpts}</select>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Retailer (optional)</label>
+        <input id="pb-form-retailer" type="text" placeholder="e.g. Checkers" maxlength="30" />
+      </div>
+      <div class="modal-actions">
+        <button class="btn-secondary" onclick="App.closeModal()">Cancel</button>
+        <button class="btn-primary" onclick="PriceBook.savePrice()">Save</button>
+      </div>`;
+    document.getElementById('modal-overlay').classList.remove('hidden');
+  }
+
+  function openEditPriceForm(ingredientIdx, priceIdx) {
+    const entries = Data.getPriceBook();
+    const card = entries[ingredientIdx];
+    if (!card) return;
+    const p = card.prices[priceIdx];
+    if (!p) return;
+    _modalIngredientName = card.ingredient;
+    _modalPriceIdx = priceIdx;
+    const unitOpts = UNITS.map(u =>
+      `<option value="${u}" ${p.unit === u ? 'selected' : ''}>${u}</option>`
+    ).join('');
+    document.getElementById('modal-content').innerHTML = `
+      <h3>Edit Price — <span style="text-transform:capitalize">${_esc(card.ingredient)}</span></h3>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Price (R)</label>
+          <input id="pb-form-price" type="number" step="0.01" min="0"
+            value="${p.pricePerUnit}" autofocus />
+        </div>
+        <div class="form-group">
+          <label>Per</label>
+          <select id="pb-form-unit">${unitOpts}</select>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Retailer (optional)</label>
+        <input id="pb-form-retailer" type="text" value="${_esc(p.retailer || '')}" maxlength="30" />
+      </div>
+      <div class="modal-actions">
+        <button class="btn-secondary" onclick="App.closeModal()">Cancel</button>
+        <button class="btn-primary" onclick="PriceBook.savePrice()">Save</button>
+      </div>`;
+    document.getElementById('modal-overlay').classList.remove('hidden');
+  }
+
+  function savePrice() {
+    const price = parseFloat(document.getElementById('pb-form-price')?.value);
+    const unit = document.getElementById('pb-form-unit')?.value || 'item';
+    const retailer = (document.getElementById('pb-form-retailer')?.value || '').trim();
+    if (isNaN(price) || price < 0) { App.toast('Enter a valid price', 'warn'); return; }
+    if (_modalPriceIdx !== null) {
+      Data.removePriceEntry(_modalIngredientName, _modalPriceIdx);
+    }
+    Data.setPriceEntry(_modalIngredientName, { unit, pricePerUnit: price, retailer });
     App.closeModal();
     render();
     App.toast('Price saved ✓');
   }
 
-  function remove(idx) {
-    if (!confirm('Remove this price entry?')) return;
-    Data.removePriceEntry(idx);
+  function removePrice(ingredientIdx, priceIdx) {
+    if (!confirm('Remove this price row?')) return;
+    const entries = Data.getPriceBook();
+    const card = entries[ingredientIdx];
+    if (!card) return;
+    Data.removePriceEntry(card.ingredient, priceIdx);
     render();
     App.toast('Removed');
+  }
+
+  function removeIngredient(ingredientIdx) {
+    if (!confirm('Remove this ingredient and all its prices?')) return;
+    Data.removeIngredient(ingredientIdx);
+    render();
+    App.toast('Removed');
+  }
+
+  function _fmtDate(dateStr) {
+    if (!dateStr) return '';
+    const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    const parts = dateStr.split('-');
+    if (parts.length < 3) return dateStr;
+    return months[parseInt(parts[1], 10) - 1] + ' ' + parseInt(parts[2], 10);
   }
 
   function _esc(s) {
     return (s || '').replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
   }
 
-  return { render, filter, openAddForm, openEditForm, saveForm, remove };
+  return { render, filter, openAddIngredientForm, saveNewIngredient, openAddPriceForm, openEditPriceForm, savePrice, removePrice, removeIngredient };
 })();
