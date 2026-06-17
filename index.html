@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
   <meta name="theme-color" content="#2d6a4f" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
@@ -38,6 +38,11 @@
           <option>Salad</option>
           <option>Soup</option>
           <option>Side</option>
+        </select>
+        <select id="recipe-sort" onchange="Recipes.filter()">
+          <option value="default">Recently added</option>
+          <option value="az">A → Z</option>
+          <option value="za">Z → A</option>
         </select>
       </div>
       <div id="recipe-list" class="card-list"></div>

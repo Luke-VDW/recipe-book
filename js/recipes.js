@@ -71,16 +71,20 @@ const Recipes = (() => {
   }
 
   function filter() {
-    const q   = (document.getElementById('recipe-search')?.value || '').toLowerCase();
-    const cat = document.getElementById('recipe-cat-filter')?.value || '';
-    const all = Data.getRecipes();
-    const filtered = all.filter(r => {
+    const q    = (document.getElementById('recipe-search')?.value || '').toLowerCase();
+    const cat  = document.getElementById('recipe-cat-filter')?.value || '';
+    const sort = document.getElementById('recipe-sort')?.value || 'default';
+    const all  = Data.getRecipes();
+    let filtered = all.filter(r => {
       const matchQ = !q || r.name.toLowerCase().includes(q)
         || (r.tags || '').toLowerCase().includes(q)
         || (r.ingredients || '').toLowerCase().includes(q);
       const matchC = !cat || r.category === cat;
       return matchQ && matchC;
     });
+
+    if (sort === 'az') filtered = filtered.slice().sort((a, b) => a.name.localeCompare(b.name));
+    else if (sort === 'za') filtered = filtered.slice().sort((a, b) => b.name.localeCompare(a.name));
 
     const el = document.getElementById('recipe-list');
     if (!el) return;
