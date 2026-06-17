@@ -783,3 +783,78 @@ body {
   gap: 6px;
   align-items: center;
 }
+
+/* ── Pantry view ────────────────────────────────────── */
+.pantry-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  margin-bottom: 10px;
+  overflow: hidden;
+}
+.pantry-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 14px;
+  background: var(--lt-green);
+}
+.pantry-card-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  flex: 1;
+}
+.pantry-card-name {
+  font-weight: 700;
+  font-size: 0.9rem;
+  text-transform: capitalize;
+  color: var(--dk-green);
+}
+.pantry-card-qty {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+.pantry-card-actions {
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
+}
+.pantry-perishable-badge {
+  font-size: 0.72rem;
+  background: #fef9c3;
+  color: #854d0e;
+  border-radius: 4px;
+  padding: 1px 6px;
+  font-weight: 600;
+}
+.pantry-in-stock {
+  font-size: 0.75rem;
+  color: var(--md-green);
+  font-weight: 600;
+  margin-top: 2px;
+}
+.pantry-partial-stock {
+  font-size: 0.75rem;
+  color: #d97706;
+  font-weight: 600;
+  margin-top: 2px;
+}
+.pantry-add-btn {
+  width: 100%;
+  margin-top: 8px;
+  padding: 12px;
+  background: none;
+  border: 2px dashed var(--border);
+  border-radius: var(--radius);
+  font-size: 0.9rem;
+  color: var(--text-muted);
+  cursor: pointer;
+  text-align: center;
+  box-sizing: border-box;
+}
+.pantry-add-btn:hover {
+  border-color: var(--md-green);
+  color: var(--md-green);
+}
