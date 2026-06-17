@@ -63,9 +63,16 @@ const Shopping = (() => {
         const label = qty ? `${qty}${item.unit ? ' ' + item.unit : ''} ${item.name}` : item.name;
 
         let sourceHtml = '';
-        if (item.sources && item.sources.length > 1) {
+        const showSources = item.sources && item.sources.length > 0 &&
+          (item.sources.length > 1 || (item.sources[0] && item.sources[0].context));
+        if (showSources) {
           const sourceText = item.sources
-            .map(s => `${s.recipe}${s.qty ? ' ' + fmtQty(s.qty) + (s.unit ? ' ' + s.unit : '') : ''}`)
+            .map(s => {
+              let text = s.recipe;
+              if (s.qty) text += ' ' + fmtQty(s.qty) + (s.unit ? ' ' + s.unit : '');
+              if (s.context) text += ` (${s.context})`;
+              return text;
+            })
             .join(' · ');
           sourceHtml = `<div class="shop-item-source">${sourceText}</div>`;
         }
