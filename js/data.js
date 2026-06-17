@@ -67,12 +67,16 @@ const Data = (() => {
   function removePantryItem(ingredientName) {
     if (!_db.pantry) return;
     const name = (ingredientName || '').toLowerCase().trim();
-    _db.pantry = _db.pantry.filter(p => p.ingredient.toLowerCase() !== name);
+    const idx = _db.pantry.findIndex(p => p.ingredient.toLowerCase() === name);
+    if (idx < 0) return;
+    _db.pantry.splice(idx, 1);
     save();
   }
 
   function clearPantryPerishables() {
     if (!_db.pantry) return;
+    const hasPerishables = _db.pantry.some(p => p.perishable);
+    if (!hasPerishables) return;
     _db.pantry.forEach(p => { if (p.perishable) p.qty = 0; });
     save();
   }
