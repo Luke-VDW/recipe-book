@@ -48,6 +48,7 @@ const Planner = (() => {
 
   function _calcRecipeCost(recipe) {
     const ingredients = Recipes.parseIngredients(recipe.ingredients);
+    if (!ingredients.length) return { cost: 0, partial: true };
     let total = 0;
     let partial = false;
     for (const ing of ingredients) {
@@ -64,6 +65,7 @@ const Planner = (() => {
     const dayRows = Data.DAYS.map(day => {
       const dayData = wk[day] || {};
       let dayTotal = 0;
+      let dayPartial = false;
       const parts = [];
       Data.MEALS.forEach(meal => {
         const id = dayData[meal];
@@ -72,11 +74,11 @@ const Planner = (() => {
         if (!r) return;
         const { cost, partial } = _calcRecipeCost(r);
         const abbrev = meal[0].toUpperCase();
-        if (partial) hasMissingPrice = true;
+        if (partial) { hasMissingPrice = true; dayPartial = true; }
         dayTotal += cost;
         parts.push(`${abbrev}:${partial ? '~' : ''}R${cost.toFixed(0)}`);
       });
-      return { label: DAY_LABELS[day], parts, dayTotal };
+      return { label: DAY_LABELS[day], parts, dayTotal, dayPartial };
     });
 
     const mealsTotal = dayRows.reduce((sum, d) => sum + d.dayTotal, 0);
@@ -100,14 +102,14 @@ const Planner = (() => {
       <tr>
         <td class="summary-day">${d.label}</td>
         <td class="summary-meals">${d.parts.join(' · ') || '<span style="color:var(--text-muted)">—</span>'}</td>
-        <td class="summary-day-total">${d.dayTotal > 0 ? 'R ' + d.dayTotal.toFixed(2) : (d.parts.length ? '—' : '')}</td>
+        <td class="summary-day-total">${d.dayTotal > 0 ? (d.dayPartial ? '~' : '') + 'R ' + d.dayTotal.toFixed(2) : (d.parts.length ? '—' : '')}</td>
       </tr>`).join('');
 
     const treatSectionHtml = treatRows.length ? `
       <tr class="summary-section-header"><td colspan="3">Treats</td></tr>
       ${treatRows.map(t => `
       <tr>
-        <td colspan="2" class="summary-treat-name">${t.name} ×${t.batches}</td>
+        <td colspan="2" class="summary-treat-name">${t.name} ×${t.batches} ${t.batches !== 1 ? 'batches' : 'batch'}</td>
         <td class="summary-day-total">${t.partial ? '~' : ''}R ${t.cost.toFixed(2)}</td>
       </tr>`).join('')}
       <tr class="summary-subtotal">
