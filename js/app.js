@@ -110,6 +110,7 @@ const App = (() => {
     // Load data
     Data.load();
     Data.loadStarterData();
+    Data.loadStarterPrices();
 
     // Register service worker
     if ('serviceWorker' in navigator) {

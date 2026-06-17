@@ -12,6 +12,7 @@ const Data = (() => {
     mealPlan: { week1:{}, week2:{}, week3:{}, week4:{} },
     pantry: [],
     shoppingList: [],
+    priceBook: [],
   };
 
   const DAYS = ['monday','tuesday','wednesday','thursday','friday','saturday','sunday'];
@@ -29,6 +30,7 @@ const Data = (() => {
           _db.mealPlan[w][d] = _db.mealPlan[w][d] || { breakfast:'', lunch:'', dinner:'' };
         });
       });
+      if (!_db.priceBook) _db.priceBook = [];
     } catch(e) { console.warn('Data.load error', e); }
   }
 
@@ -105,6 +107,76 @@ const Data = (() => {
       _db.recipes[idx].kcalTotal = kcal;
       save();
     }
+  }
+
+  // ── Unit conversion helpers ──────────
+  function _normalizeToBase(qty, unit) {
+    const u = (unit || '').toLowerCase();
+    if (u === 'kg')   return [qty * 1000, 'g'];
+    if (u === 'g')    return [qty, 'g'];
+    if (u === 'l')    return [qty * 1000, 'ml'];
+    if (u === 'ml')   return [qty, 'ml'];
+    if (u === 'tsp')  return [qty * 5, 'ml'];
+    if (u === 'tbsp') return [qty * 15, 'ml'];
+    if (u === 'cup')  return [qty * 240, 'ml'];
+    if (u === 'oz')   return [qty * 28.35, 'g'];
+    if (u === 'lb')   return [qty * 453.6, 'g'];
+    return [qty, 'item'];
+  }
+
+  function _pricePerBase(pricePerUnit, pbUnit) {
+    if (pbUnit === 'g')     return [pricePerUnit, 'g'];
+    if (pbUnit === '100g')  return [pricePerUnit / 100, 'g'];
+    if (pbUnit === 'kg')    return [pricePerUnit / 1000, 'g'];
+    if (pbUnit === 'ml')    return [pricePerUnit, 'ml'];
+    if (pbUnit === '100ml') return [pricePerUnit / 100, 'ml'];
+    if (pbUnit === 'l')     return [pricePerUnit / 1000, 'ml'];
+    if (pbUnit === 'tsp')   return [pricePerUnit / 5, 'ml'];
+    if (pbUnit === 'tbsp')  return [pricePerUnit / 15, 'ml'];
+    return [pricePerUnit, 'item'];
+  }
+
+  // ── Price Book CRUD ──────────────────
+  function getPriceBook() { return _db.priceBook || []; }
+
+  function setPriceEntry(entry, idx) {
+    if (!_db.priceBook) _db.priceBook = [];
+    if (idx !== undefined && idx >= 0 && idx < _db.priceBook.length) {
+      _db.priceBook[idx] = entry;
+    } else {
+      const existing = _db.priceBook.findIndex(
+        e => e.ingredient.toLowerCase() === entry.ingredient.toLowerCase()
+      );
+      if (existing >= 0) _db.priceBook[existing] = entry;
+      else _db.priceBook.push(entry);
+    }
+    save();
+  }
+
+  function removePriceEntry(idx) {
+    if (!_db.priceBook || idx < 0 || idx >= _db.priceBook.length) return;
+    _db.priceBook.splice(idx, 1);
+    save();
+  }
+
+  function lookupPriceEntry(name) {
+    const lower = (name || '').toLowerCase().trim();
+    const book = _db.priceBook || [];
+    return book.find(e =>
+      lower.includes(e.ingredient.toLowerCase()) ||
+      e.ingredient.toLowerCase().includes(lower)
+    ) || null;
+  }
+
+  function lookupPrice(name, qty, unit) {
+    const entry = lookupPriceEntry(name);
+    if (!entry) return null;
+    const parsedQty = parseFloat(qty) || 0;
+    if (parsedQty === 0) return 0;
+    const [baseQty, baseType]          = _normalizeToBase(parsedQty, unit || '');
+    const [pbPricePerBase, pbBaseType] = _pricePerBase(entry.pricePerUnit, entry.unit);
+    if (baseType !== pbBaseType) return null;
+    return Math.round(baseQty * pbPricePerBase * 100) / 100;
   }
 
   function toggleShoppingItem(idx) {
@@ -306,6 +378,7 @@ const Data = (() => {
       mealPlan: { week1:{}, week2:{}, week3:{}, week4:{} },
       pantry: [],
       shoppingList: [],
+      priceBook: [],
     };
     save();
     App.toast('All data cleared');
@@ -341,13 +414,96 @@ const Data = (() => {
     save();
   }
 
+  function loadStarterPrices() {
+    if (_db.priceBook && _db.priceBook.length > 0) return;
+    const d = '2026-06-17';
+    _db.priceBook = [
+      // Produce
+      { ingredient: 'onion',         unit: 'kg',   pricePerUnit: 20,  retailer: '', updatedDate: d },
+      { ingredient: 'garlic',        unit: 'item', pricePerUnit: 4,   retailer: '', updatedDate: d },
+      { ingredient: 'tomato',        unit: 'kg',   pricePerUnit: 35,  retailer: '', updatedDate: d },
+      { ingredient: 'potato',        unit: 'kg',   pricePerUnit: 22,  retailer: '', updatedDate: d },
+      { ingredient: 'carrot',        unit: 'kg',   pricePerUnit: 22,  retailer: '', updatedDate: d },
+      { ingredient: 'capsicum',      unit: 'kg',   pricePerUnit: 55,  retailer: '', updatedDate: d },
+      { ingredient: 'cucumber',      unit: 'item', pricePerUnit: 12,  retailer: '', updatedDate: d },
+      { ingredient: 'spinach',       unit: 'kg',   pricePerUnit: 35,  retailer: '', updatedDate: d },
+      { ingredient: 'mushroom',      unit: 'kg',   pricePerUnit: 80,  retailer: '', updatedDate: d },
+      { ingredient: 'broccoli',      unit: 'kg',   pricePerUnit: 50,  retailer: '', updatedDate: d },
+      { ingredient: 'avocado',       unit: 'item', pricePerUnit: 18,  retailer: '', updatedDate: d },
+      { ingredient: 'lemon',         unit: 'item', pricePerUnit: 8,   retailer: '', updatedDate: d },
+      { ingredient: 'lime',          unit: 'item', pricePerUnit: 6,   retailer: '', updatedDate: d },
+      { ingredient: 'banana',        unit: 'kg',   pricePerUnit: 22,  retailer: '', updatedDate: d },
+      { ingredient: 'apple',         unit: 'kg',   pricePerUnit: 38,  retailer: '', updatedDate: d },
+      { ingredient: 'orange',        unit: 'kg',   pricePerUnit: 28,  retailer: '', updatedDate: d },
+      { ingredient: 'ginger',        unit: '100g', pricePerUnit: 12,  retailer: '', updatedDate: d },
+      { ingredient: 'chilli',        unit: '100g', pricePerUnit: 15,  retailer: '', updatedDate: d },
+      { ingredient: 'spring onion',  unit: 'item', pricePerUnit: 6,   retailer: '', updatedDate: d },
+      { ingredient: 'sweet potato',  unit: 'kg',   pricePerUnit: 28,  retailer: '', updatedDate: d },
+      // Meat
+      { ingredient: 'beef mince',    unit: 'kg',   pricePerUnit: 140, retailer: '', updatedDate: d },
+      { ingredient: 'chicken breast',unit: 'kg',   pricePerUnit: 95,  retailer: '', updatedDate: d },
+      { ingredient: 'chicken thigh', unit: 'kg',   pricePerUnit: 70,  retailer: '', updatedDate: d },
+      { ingredient: 'chicken',       unit: 'kg',   pricePerUnit: 80,  retailer: '', updatedDate: d },
+      { ingredient: 'pork',          unit: 'kg',   pricePerUnit: 110, retailer: '', updatedDate: d },
+      { ingredient: 'lamb',          unit: 'kg',   pricePerUnit: 190, retailer: '', updatedDate: d },
+      { ingredient: 'rump steak',    unit: 'kg',   pricePerUnit: 200, retailer: '', updatedDate: d },
+      { ingredient: 'beef fillet',   unit: 'kg',   pricePerUnit: 420, retailer: '', updatedDate: d },
+      { ingredient: 'bacon',         unit: 'kg',   pricePerUnit: 130, retailer: '', updatedDate: d },
+      { ingredient: 'sausage',       unit: 'kg',   pricePerUnit: 90,  retailer: '', updatedDate: d },
+      { ingredient: 'salmon',        unit: 'kg',   pricePerUnit: 280, retailer: '', updatedDate: d },
+      { ingredient: 'tuna',          unit: '100g', pricePerUnit: 15,  retailer: '', updatedDate: d },
+      // Dairy
+      { ingredient: 'milk',          unit: 'l',    pricePerUnit: 26,  retailer: '', updatedDate: d },
+      { ingredient: 'cream',         unit: '100ml',pricePerUnit: 16,  retailer: '', updatedDate: d },
+      { ingredient: 'butter',        unit: '100g', pricePerUnit: 18,  retailer: '', updatedDate: d },
+      { ingredient: 'cheddar',       unit: '100g', pricePerUnit: 28,  retailer: '', updatedDate: d },
+      { ingredient: 'feta',          unit: '100g', pricePerUnit: 22,  retailer: '', updatedDate: d },
+      { ingredient: 'mozzarella',    unit: '100g', pricePerUnit: 25,  retailer: '', updatedDate: d },
+      { ingredient: 'parmesan',      unit: '100g', pricePerUnit: 55,  retailer: '', updatedDate: d },
+      { ingredient: 'yogurt',        unit: 'kg',   pricePerUnit: 65,  retailer: '', updatedDate: d },
+      { ingredient: 'egg',           unit: 'item', pricePerUnit: 4,   retailer: '', updatedDate: d },
+      { ingredient: 'sour cream',    unit: '100g', pricePerUnit: 12,  retailer: '', updatedDate: d },
+      // Pantry
+      { ingredient: 'olive oil',     unit: '100ml',pricePerUnit: 18,  retailer: '', updatedDate: d },
+      { ingredient: 'sunflower oil', unit: 'l',    pricePerUnit: 25,  retailer: '', updatedDate: d },
+      { ingredient: 'coconut oil',   unit: '100ml',pricePerUnit: 22,  retailer: '', updatedDate: d },
+      { ingredient: 'flour',         unit: 'kg',   pricePerUnit: 16,  retailer: '', updatedDate: d },
+      { ingredient: 'sugar',         unit: 'kg',   pricePerUnit: 18,  retailer: '', updatedDate: d },
+      { ingredient: 'rice',          unit: 'kg',   pricePerUnit: 18,  retailer: '', updatedDate: d },
+      { ingredient: 'pasta',         unit: 'kg',   pricePerUnit: 28,  retailer: '', updatedDate: d },
+      { ingredient: 'spaghetti',     unit: 'kg',   pricePerUnit: 28,  retailer: '', updatedDate: d },
+      { ingredient: 'oats',          unit: 'kg',   pricePerUnit: 38,  retailer: '', updatedDate: d },
+      { ingredient: 'bread',         unit: 'item', pricePerUnit: 22,  retailer: '', updatedDate: d },
+      { ingredient: 'honey',         unit: '100g', pricePerUnit: 16,  retailer: '', updatedDate: d },
+      { ingredient: 'soy sauce',     unit: '100ml',pricePerUnit: 12,  retailer: '', updatedDate: d },
+      { ingredient: 'tomato paste',  unit: '100g', pricePerUnit: 10,  retailer: '', updatedDate: d },
+      { ingredient: 'tinned tomato', unit: '100g', pricePerUnit: 5,   retailer: '', updatedDate: d },
+      { ingredient: 'coconut milk',  unit: '100ml',pricePerUnit: 8,   retailer: '', updatedDate: d },
+      { ingredient: 'stock',         unit: 'item', pricePerUnit: 8,   retailer: '', updatedDate: d },
+      { ingredient: 'vinegar',       unit: '100ml',pricePerUnit: 4,   retailer: '', updatedDate: d },
+      // Spices
+      { ingredient: 'cumin',         unit: '100g', pricePerUnit: 38,  retailer: '', updatedDate: d },
+      { ingredient: 'paprika',       unit: '100g', pricePerUnit: 32,  retailer: '', updatedDate: d },
+      { ingredient: 'turmeric',      unit: '100g', pricePerUnit: 30,  retailer: '', updatedDate: d },
+      { ingredient: 'cinnamon',      unit: '100g', pricePerUnit: 35,  retailer: '', updatedDate: d },
+      { ingredient: 'curry powder',  unit: '100g', pricePerUnit: 42,  retailer: '', updatedDate: d },
+      { ingredient: 'garam masala',  unit: '100g', pricePerUnit: 45,  retailer: '', updatedDate: d },
+      { ingredient: 'black pepper',  unit: '100g', pricePerUnit: 42,  retailer: '', updatedDate: d },
+      { ingredient: 'cayenne',       unit: '100g', pricePerUnit: 38,  retailer: '', updatedDate: d },
+      { ingredient: 'oregano',       unit: '100g', pricePerUnit: 32,  retailer: '', updatedDate: d },
+      { ingredient: 'thyme',         unit: '100g', pricePerUnit: 32,  retailer: '', updatedDate: d },
+    ];
+    save();
+  }
+
   return {
     load, save, getRecipes, getPlan, getPantry, getShoppingList,
     addRecipe, updateRecipe, deleteRecipe, getRecipeById,
     setMealSlot, setShoppingList, setTreats, setRecipeCalories, toggleShoppingItem,
     isDriveConnected, connectDrive, disconnectDrive, syncDrive,
     exportJSON, importJSON, handleImportFile, clearAll,
-    loadStarterData, getClientId, setClientId,
+    loadStarterData, loadStarterPrices, getClientId, setClientId,
+    getPriceBook, setPriceEntry, removePriceEntry, lookupPriceEntry, lookupPrice,
     DAYS, MEALS,
   };
 })();
