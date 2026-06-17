@@ -59,7 +59,7 @@ const PriceBook = (() => {
   function _openForm(entry, idx) {
     const e = entry || {};
     const unitOpts = UNITS.map(u =>
-      `<option value="${u}" ${(e.unit || 'kg') === u ? 'selected' : ''}>${u}</option>`
+      `<option value="${u}" ${(e.unit || 'item') === u ? 'selected' : ''}>${u}</option>`
     ).join('');
     document.getElementById('modal-content').innerHTML = `
     <h3>${entry ? 'Edit Price' : 'Add Price'}</h3>
@@ -98,6 +98,7 @@ const PriceBook = (() => {
     const retailer = (document.getElementById('pb-form-retailer')?.value || '').trim();
     if (!ingredient) { App.toast('Enter an ingredient name', 'warn'); return; }
     if (isNaN(price) || price < 0) { App.toast('Enter a valid price', 'warn'); return; }
+    if (idx !== null) Data.removePriceEntry(idx);
     Data.setPriceEntry({
       ingredient,
       unit,
