@@ -21,7 +21,8 @@ const PriceBook = (() => {
     if (filtered.length === 0) {
       el.innerHTML = `<div class="empty-state"><span class="emoji">💰</span>${
         filterLower ? 'No matches.' : 'No prices yet. Tap ＋ Add to get started.'
-      }</div>`;
+      }</div>
+      <button class="pb-add-ingredient-btn" onclick="PriceBook.openAddIngredientForm()">＋ Add ingredient</button>`;
       return;
     }
 
@@ -176,6 +177,7 @@ const PriceBook = (() => {
   }
 
   function savePrice() {
+    if (!_modalIngredientName) { App.toast('No ingredient selected', 'warn'); return; }
     const price = parseFloat(document.getElementById('pb-form-price')?.value);
     const unit = document.getElementById('pb-form-unit')?.value || 'item';
     const retailer = (document.getElementById('pb-form-retailer')?.value || '').trim();
