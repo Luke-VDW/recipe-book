@@ -99,6 +99,14 @@ const Data = (() => {
     save();
   }
 
+  function setRecipeCalories(id, kcal) {
+    const idx = _db.recipes.findIndex(r => r.id === id);
+    if (idx >= 0) {
+      _db.recipes[idx].kcalTotal = kcal;
+      save();
+    }
+  }
+
   function toggleShoppingItem(idx) {
     if (_db.shoppingList[idx]) {
       _db.shoppingList[idx].checked = !_db.shoppingList[idx].checked;
@@ -336,7 +344,7 @@ const Data = (() => {
   return {
     load, save, getRecipes, getPlan, getPantry, getShoppingList,
     addRecipe, updateRecipe, deleteRecipe, getRecipeById,
-    setMealSlot, setShoppingList, setTreats, toggleShoppingItem,
+    setMealSlot, setShoppingList, setTreats, setRecipeCalories, toggleShoppingItem,
     isDriveConnected, connectDrive, disconnectDrive, syncDrive,
     exportJSON, importJSON, handleImportFile, clearAll,
     loadStarterData, getClientId, setClientId,
