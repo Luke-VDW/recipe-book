@@ -105,8 +105,10 @@ const Shopping = (() => {
   function _renderPantryBadge(item) {
     const pantryItem = Data.getPantryItem(item.name);
     if (!pantryItem || pantryItem.qty <= 0) return '';
-    if (pantryItem.unit === item.unit) {
-      if (pantryItem.qty >= (item.qty || 0)) {
+    const [shoppingBase, shoppingBaseUnit] = Data.normalizeToBase(item.qty || 0, item.unit);
+    const [pantryBase, pantryBaseUnit] = Data.normalizeToBase(pantryItem.qty, pantryItem.unit, pantryItem.gramEquiv);
+    if (shoppingBaseUnit === pantryBaseUnit) {
+      if (pantryBase >= (item.qty ? shoppingBase : 0)) {
         return `<div class="pantry-in-stock">✓ In pantry (${_fmtPantryQty(pantryItem.qty)} ${_esc(pantryItem.unit)})</div>`;
       }
       return `<div class="pantry-partial-stock">In pantry: ${_fmtPantryQty(pantryItem.qty)} ${_esc(pantryItem.unit)}</div>`;
@@ -122,7 +124,7 @@ const Shopping = (() => {
     if (!item) return;
     const card = Data.lookupPriceEntry(item.name);
     const firstPrice = (card && card.prices && card.prices.length > 0) ? card.prices[0] : null;
-    const units = ['g','100g','kg','ml','100ml','l','item','tsp','tbsp'];
+    const units = ['g','100g','kg','ml','100ml','l','item','tsp','tbsp','clove','bunch','head','can','packet','loaf','dozen'];
     const unitOpts = units.map(u =>
       `<option value="${u}" ${(firstPrice ? firstPrice.unit : 'item') === u ? 'selected' : ''}>${u}</option>`
     ).join('');
@@ -176,7 +178,7 @@ const Shopping = (() => {
   }
 
   function render() {
-    // Auto-tick items fully covered by pantry stock (same unit, sufficient qty)
+    // Auto-tick items fully covered by pantry stock (cross-unit aware)
     const preItems = Data.getShoppingList();
     preItems.forEach((item, idx) => {
       if (item.checked) return;
@@ -185,7 +187,9 @@ const Shopping = (() => {
       const pantryItem = pantry.find(p => p.ingredient.toLowerCase() === item.name.toLowerCase().trim());
       if (!pantryItem || pantryItem.qty <= 0) return;
       if (!item.qty) return; // skip items with no specified quantity
-      if (pantryItem.unit === item.unit && pantryItem.qty >= item.qty) {
+      const [shoppingBase, shoppingBaseUnit] = Data.normalizeToBase(item.qty, item.unit);
+      const [pantryBase, pantryBaseUnit] = Data.normalizeToBase(pantryItem.qty, pantryItem.unit, pantryItem.gramEquiv);
+      if (shoppingBaseUnit === pantryBaseUnit && pantryBase >= shoppingBase) {
         Data.toggleShoppingItem(idx);
       }
     });
