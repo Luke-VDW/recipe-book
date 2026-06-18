@@ -6,7 +6,17 @@ const Pantry = (() => {
   let _filter = '';
   let _editingName = null;
 
-  const UNITS = ['g','100g','kg','ml','100ml','l','item','tsp','tbsp'];
+  const UNITS = ['g','100g','kg','ml','100ml','l','item','tsp','tbsp','clove','bunch','head','can','packet','loaf','dozen'];
+  const GRAM_EQUIV_UNITS = ['can','packet','loaf','bunch','head'];
+
+  function onUnitChange(selectEl) {
+    const val = typeof selectEl === 'string' ? selectEl : selectEl.value;
+    const show = GRAM_EQUIV_UNITS.includes(val);
+    const group = document.getElementById('pantry-gram-equiv-group');
+    const unitLabel = document.getElementById('pantry-gram-equiv-unit');
+    if (group) group.style.display = show ? '' : 'none';
+    if (unitLabel) unitLabel.textContent = val;
+  }
 
   function render() {
     const allItems = Data.getPantry();
@@ -68,8 +78,11 @@ const Pantry = (() => {
         </div>
         <div class="form-group">
           <label>Unit</label>
-          <select id="pantry-form-unit">${unitOpts}</select>
+          <select id="pantry-form-unit" onchange="Pantry.onUnitChange(this)">${unitOpts}</select>
         </div>
+      </div>
+      <div class="form-group" id="pantry-gram-equiv-group" style="display:none">
+        <label>1 <span id="pantry-gram-equiv-unit">unit</span> ≈ <input id="pantry-form-gramequiv" type="number" step="1" min="0" placeholder="e.g. 400" style="width:70px" /> g (optional)</label>
       </div>
       <div class="form-group">
         <label><input type="checkbox" id="pantry-form-perishable" /> Perishable (auto-reset weekly)</label>
@@ -86,9 +99,10 @@ const Pantry = (() => {
     const qty = parseFloat(document.getElementById('pantry-form-qty')?.value) || 0;
     const unit = document.getElementById('pantry-form-unit')?.value || 'item';
     const perishable = document.getElementById('pantry-form-perishable')?.checked || false;
+    const gramEquiv = document.getElementById('pantry-form-gramequiv')?.value || '';
     if (!ingredient) { App.toast('Enter an ingredient name', 'warn'); return; }
     if (qty < 0) { App.toast('Qty cannot be negative', 'warn'); return; }
-    Data.setPantryItem(ingredient, { qty, unit, perishable });
+    Data.setPantryItem(ingredient, { qty, unit, perishable, gramEquiv });
     App.closeModal();
     render();
     App.toast('Added to pantry ✓');
@@ -99,6 +113,7 @@ const Pantry = (() => {
     const item = allItems[idx];
     if (!item) return;
     _editingName = item.ingredient;
+    const showGramEquiv = GRAM_EQUIV_UNITS.includes(item.unit);
     const unitOpts = UNITS.map(u =>
       `<option value="${u}" ${item.unit === u ? 'selected' : ''}>${u}</option>`
     ).join('');
@@ -111,8 +126,11 @@ const Pantry = (() => {
         </div>
         <div class="form-group">
           <label>Unit</label>
-          <select id="pantry-form-unit">${unitOpts}</select>
+          <select id="pantry-form-unit" onchange="Pantry.onUnitChange(this)">${unitOpts}</select>
         </div>
+      </div>
+      <div class="form-group" id="pantry-gram-equiv-group" style="display:${showGramEquiv ? '' : 'none'}">
+        <label>1 <span id="pantry-gram-equiv-unit">${item.unit}</span> ≈ <input id="pantry-form-gramequiv" type="number" step="1" min="0" value="${item.gramEquiv || ''}" placeholder="e.g. 400" style="width:70px" /> g (optional)</label>
       </div>
       <div class="form-group">
         <label><input type="checkbox" id="pantry-form-perishable" ${item.perishable ? 'checked' : ''} /> Perishable</label>
@@ -129,8 +147,9 @@ const Pantry = (() => {
     const qty = parseFloat(document.getElementById('pantry-form-qty')?.value) || 0;
     const unit = document.getElementById('pantry-form-unit')?.value || 'item';
     const perishable = document.getElementById('pantry-form-perishable')?.checked || false;
+    const gramEquiv = document.getElementById('pantry-form-gramequiv')?.value || '';
     if (qty < 0) { App.toast('Qty cannot be negative', 'warn'); return; }
-    Data.setPantryItem(_editingName, { qty, unit, perishable });
+    Data.setPantryItem(_editingName, { qty, unit, perishable, gramEquiv });
     App.closeModal();
     render();
     App.toast('Pantry updated ✓');
@@ -167,5 +186,5 @@ const Pantry = (() => {
     return (s || '').replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
   }
 
-  return { render, filter, openAddForm, saveNew, openEditForm, save, remove, resetPerishables };
+  return { render, filter, openAddForm, saveNew, openEditForm, save, remove, resetPerishables, onUnitChange };
 })();
