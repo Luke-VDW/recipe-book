@@ -877,3 +877,7 @@ body {
 .analytics-shop-total { color:var(--dk-green); font-weight:700; }
 .analytics-shop-detail { font-size:0.82rem; color:var(--text-muted); padding:8px 0 0; display:none; }
 .analytics-shop-detail.open { display:block; }
+
+/* ── Price Book orphan badge ───────────────────────────── */
+.pb-orphan-badge { font-size:0.7rem; background:#fef3c7; color:#92400e; border-radius:4px; padding:1px 6px; margin-left:6px; vertical-align:middle; }
+.btn-small.active { background:var(--md-green); color:#fff; }

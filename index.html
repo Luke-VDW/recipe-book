@@ -151,7 +151,10 @@
     <section id="view-pricebook" class="view">
       <div class="section-header">
         <h2>Price Book</h2>
-        <button class="btn-small" onclick="PriceBook.openAddIngredientForm()">＋ Add</button>
+        <div class="section-header-actions">
+          <button class="btn-small" id="pb-orphan-toggle" onclick="PriceBook.toggleOrphans()">Orphans only</button>
+          <button class="btn-small" onclick="PriceBook.openAddIngredientForm()">＋ Add</button>
+        </div>
       </div>
       <div class="search-bar">
         <input id="pb-search" type="search" placeholder="Search ingredients…"
