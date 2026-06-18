@@ -8,7 +8,21 @@ const PriceBook = (() => {
   let _modalIngredientName = '';
   let _modalPriceIdx = null;
 
-  const UNITS = ['g','100g','kg','ml','100ml','l','item','tsp','tbsp'];
+  const UNITS = ['g','100g','kg','ml','100ml','l','item','tsp','tbsp','clove','bunch','head','can','packet','loaf','dozen'];
+  const GRAM_EQUIV_UNITS = ['can','packet','loaf','bunch','head'];
+
+  function onUnitChange(selectEl) {
+    const val = typeof selectEl === 'string' ? selectEl : selectEl.value;
+    const show = GRAM_EQUIV_UNITS.includes(val);
+    const group = document.getElementById('pb-gram-equiv-group');
+    const unitLabel = document.getElementById('pb-gram-equiv-unit');
+    if (group) group.style.display = show ? '' : 'none';
+    if (unitLabel) unitLabel.textContent = val;
+    if (!show) {
+      const geInput = document.getElementById('pb-form-gramequiv');
+      if (geInput) geInput.value = '';
+    }
+  }
 
   function render() {
     const entries = Data.getPriceBook();
@@ -153,8 +167,11 @@ const PriceBook = (() => {
         </div>
         <div class="form-group">
           <label>Per</label>
-          <select id="pb-form-unit">${unitOpts}</select>
+          <select id="pb-form-unit" onchange="PriceBook.onUnitChange(this)">${unitOpts}</select>
         </div>
+      </div>
+      <div class="form-group" id="pb-gram-equiv-group" style="display:none">
+        <label>1 <span id="pb-gram-equiv-unit">unit</span> ≈ <input id="pb-form-gramequiv" type="number" step="1" min="0" placeholder="e.g. 400" style="width:70px" /> g (optional)</label>
       </div>
       <div class="form-group">
         <label>Retailer (optional)</label>
@@ -175,6 +192,7 @@ const PriceBook = (() => {
     if (!p) return;
     _modalIngredientName = card.ingredient;
     _modalPriceIdx = priceIdx;
+    const showGramEquiv = GRAM_EQUIV_UNITS.includes(p.unit);
     const unitOpts = UNITS.map(u =>
       `<option value="${u}" ${p.unit === u ? 'selected' : ''}>${u}</option>`
     ).join('');
@@ -188,8 +206,11 @@ const PriceBook = (() => {
         </div>
         <div class="form-group">
           <label>Per</label>
-          <select id="pb-form-unit">${unitOpts}</select>
+          <select id="pb-form-unit" onchange="PriceBook.onUnitChange(this)">${unitOpts}</select>
         </div>
+      </div>
+      <div class="form-group" id="pb-gram-equiv-group" style="display:${showGramEquiv ? '' : 'none'}">
+        <label>1 <span id="pb-gram-equiv-unit">${_esc(p.unit)}</span> ≈ <input id="pb-form-gramequiv" type="number" step="1" min="0" value="${p.gramEquiv || ''}" placeholder="e.g. 400" style="width:70px" /> g (optional)</label>
       </div>
       <div class="form-group">
         <label>Retailer (optional)</label>
@@ -207,11 +228,12 @@ const PriceBook = (() => {
     const price = parseFloat(document.getElementById('pb-form-price')?.value);
     const unit = document.getElementById('pb-form-unit')?.value || 'item';
     const retailer = (document.getElementById('pb-form-retailer')?.value || '').trim();
+    const gramEquiv = document.getElementById('pb-form-gramequiv')?.value || '';
     if (isNaN(price) || price < 0) { App.toast('Enter a valid price', 'warn'); return; }
     if (_modalPriceIdx !== null) {
       Data.removePriceEntry(_modalIngredientName, _modalPriceIdx);
     }
-    Data.setPriceEntry(_modalIngredientName, { unit, pricePerUnit: price, retailer });
+    Data.setPriceEntry(_modalIngredientName, { unit, pricePerUnit: price, retailer, gramEquiv });
     App.closeModal();
     render();
     App.toast('Price saved ✓');
@@ -246,5 +268,5 @@ const PriceBook = (() => {
     return (s || '').replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
   }
 
-  return { render, filter, toggleOrphans, openAddIngredientForm, saveNewIngredient, openAddPriceForm, openEditPriceForm, savePrice, removePrice, removeIngredient };
+  return { render, filter, toggleOrphans, openAddIngredientForm, saveNewIngredient, openAddPriceForm, openEditPriceForm, savePrice, removePrice, removeIngredient, onUnitChange };
 })();
