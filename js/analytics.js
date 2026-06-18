@@ -48,6 +48,10 @@ const Analytics = (() => {
     return 'R ' + n.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
   }
 
+  function _esc(s) {
+    return (s || '').replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  }
+
   function _bar(label, value, maxValue, amount) {
     const pct = maxValue > 0 ? (value / maxValue * 100).toFixed(1) : 0;
     return `
@@ -66,7 +70,7 @@ const Analytics = (() => {
     const log = Data.getSpendLog();
 
     if (log.length === 0) {
-      el.innerHTML = `<div class="empty-state"><span class="emoji">📊</span>No spend data yet.<br>Use "Complete Shop" on the shopping list to log your first shop.</div>`;
+      el.innerHTML = `<div class="empty-state"><span class="emoji">📊</span>No spend data yet.<br>Use "Confirm Shop" on the shopping list to log your first shop.</div>`;
       return;
     }
 
@@ -129,16 +133,20 @@ const Analytics = (() => {
       : `<p style="color:var(--text-muted);font-size:0.85rem">No category data for this month.</p>`;
 
     // ── Recent shops (last 5, newest first) ────────
-    const recentShops = log.slice().reverse().slice(0, 5);
+    const recentShops = log.map((entry, i) => ({ ...entry, _realIdx: i })).reverse().slice(0, 5);
     const shopsHtml = recentShops.map((entry) => {
-      const detailRows = (entry.items || []).map(item =>
-        `<div>${item.name} × ${item.qty} ${item.unit} — ${_fmtR(item.cost)}</div>`
-      ).join('');
+      const retailerTag = entry.retailer
+        ? `<span class="analytics-shop-retailer">${_esc(entry.retailer)}</span>` : '';
+      const detailRows = (entry.items || []).map(item => {
+        const estBadge = item.estimated ? `<span class="shop-est-badge">~est</span>` : '';
+        return `<div>${_esc(item.name)} × ${item.qty || ''} ${_esc(item.unit || '')} — ${_fmtR(item.cost)} ${estBadge}</div>`;
+      }).join('');
       return `
         <div class="analytics-shop-row">
-          <div class="analytics-shop-header" onclick="this.nextElementSibling.classList.toggle('open')">
-            <span class="analytics-shop-date">${_fmtDate(entry.date)}</span>
+          <div class="analytics-shop-header">
+            <span class="analytics-shop-date" style="cursor:pointer" onclick="this.closest('.analytics-shop-row').querySelector('.analytics-shop-detail').classList.toggle('open')">${_fmtDate(entry.date)}${retailerTag}</span>
             <span class="analytics-shop-total">${_fmtR(entry.total)}</span>
+            <button class="btn-mini" onclick="event.stopPropagation();Analytics.editSpendEntry(${entry._realIdx})">Edit</button>
           </div>
           <div class="analytics-shop-detail">${detailRows}</div>
         </div>`;
@@ -158,5 +166,75 @@ const Analytics = (() => {
     App.toast('Spend log cleared');
   }
 
-  return { render, clearLog };
+  function editSpendEntry(realIdx) {
+    const log = Data.getSpendLog();
+    const entry = log[realIdx];
+    if (!entry) return;
+
+    const itemRows = (entry.items || []).map((item, i) => {
+      const estBadge = item.estimated ? `<span class="shop-est-badge">~est</span>` : '';
+      return `<div class="confirm-item-row" style="align-items:center">
+        <span class="confirm-item-name">${_esc(item.name)} ${estBadge}</span>
+        <span style="font-size:0.8rem;color:var(--text-muted)">${item.qty || ''} ${_esc(item.unit || '')}</span>
+        <label style="display:flex;align-items:center;gap:4px;font-size:0.85rem">R
+          <input type="number" id="edit-item-cost-${i}" step="0.01" min="0"
+            value="${item.cost != null ? item.cost.toFixed(2) : ''}"
+            style="width:70px;padding:3px 6px;border:1px solid var(--border);border-radius:6px;font-size:0.85rem" />
+        </label>
+      </div>`;
+    }).join('');
+
+    document.getElementById('modal-content').innerHTML = `
+      <h3>Edit Shop — ${_fmtDate(entry.date)}</h3>
+      <div class="form-group">
+        <label>Store</label>
+        <input type="text" id="edit-retailer" value="${_esc(entry.retailer || '')}" maxlength="30" />
+      </div>
+      ${itemRows}
+      <div class="form-group" style="margin-top:8px">
+        <label>Override total (optional — leave blank to use sum of items)</label>
+        <input type="number" id="edit-total-override" step="0.01" min="0"
+          value="${entry.total != null ? entry.total.toFixed(2) : ''}" />
+      </div>
+      <div class="modal-actions">
+        <button class="btn-secondary" onclick="App.closeModal()">Cancel</button>
+        <button class="btn-primary" onclick="Analytics.saveSpendEntry(${realIdx})">Save</button>
+      </div>`;
+    document.getElementById('modal-overlay').classList.remove('hidden');
+  }
+
+  function saveSpendEntry(realIdx) {
+    const log = Data.getSpendLog();
+    const entry = log[realIdx];
+    if (!entry) return;
+
+    const retailer = (document.getElementById('edit-retailer')?.value || '').trim();
+    const overrideRaw = parseFloat(document.getElementById('edit-total-override')?.value);
+
+    const updatedItems = (entry.items || []).map((item, i) => {
+      const newCost = parseFloat(document.getElementById(`edit-item-cost-${i}`)?.value);
+      if (!isNaN(newCost) && newCost >= 0 && newCost !== item.cost) {
+        if (item.estimated && item.qty) {
+          Data.setPriceEntry(item.name.toLowerCase().trim(), {
+            unit: item.unit || 'item',
+            pricePerUnit: newCost / item.qty,
+            retailer,
+          });
+        }
+        return { ...item, cost: newCost, estimated: false };
+      }
+      return item;
+    });
+
+    const sumTotal = updatedItems.reduce((s, i) => s + (i.cost || 0), 0);
+    const finalTotal = (!isNaN(overrideRaw) && overrideRaw >= 0) ? overrideRaw : sumTotal;
+
+    Data.updateSpendEntry(realIdx, { ...entry, total: finalTotal, retailer, items: updatedItems });
+
+    App.closeModal();
+    render();
+    App.toast('Shop updated ✓');
+  }
+
+  return { render, clearLog, editSpendEntry, saveSpendEntry };
 })();
