@@ -223,22 +223,44 @@ const Shopping = (() => {
   }
 
   function _renderTotal(items) {
-    let total = 0;
+    const buyItems = items.filter(i => !i.pantryUsed);
+    if (buyItems.length === 0) return '';
+
+    let estimated = 0;
     let unpriced = 0;
-    items.forEach(item => {
+    buyItems.forEach(item => {
       const cost = Data.lookupPrice(item.name, item.qty, item.unit);
-      if (cost != null) total += cost;
-      else unpriced++;
+      if (cost != null) estimated += cost;
+      else if (item.actualPrice == null) unpriced++;
     });
-    if (total === 0 && unpriced === items.length) return '';
-    const note = unpriced > 0
-      ? `<span class="shop-total-note">${unpriced} item${unpriced > 1 ? 's' : ''} unpriced</span>`
+
+    let actual = 0;
+    let hasActual = false;
+    buyItems.forEach(item => {
+      if (item.actualPrice != null && item.actualPrice > 0) {
+        actual += item.actualPrice;
+        hasActual = true;
+      }
+    });
+
+    if (estimated === 0 && !hasActual && unpriced === buyItems.length) return '';
+
+    const unpricedNote = unpriced > 0
+      ? `<div class="shop-total-note">${unpriced} item${unpriced > 1 ? 's' : ''} unpriced</div>`
       : '';
+
+    const actualRow = hasActual
+      ? `<div class="shop-total-row"><span class="shop-total-label">Actual</span><span class="shop-total-amount">R ${actual.toFixed(2)}</span></div>`
+      : '';
+
     return `<div class="shop-total">
-    <span class="shop-total-label">Estimated total</span>
-    <span class="shop-total-amount">R ${total.toFixed(2)}</span>
-    ${note}
-  </div>`;
+      <div class="shop-total-row">
+        <span class="shop-total-label">Estimated</span>
+        <span class="shop-total-amount">R ${estimated.toFixed(2)}</span>
+      </div>
+      ${actualRow}
+      ${unpricedNote}
+    </div>`;
   }
 
   function render() {
