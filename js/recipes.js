@@ -356,6 +356,7 @@ const Recipes = (() => {
       openDetail(existingId);
     } else {
       const saved = Data.addRecipe(recipe);
+      Data.ensurePriceBookEntries(parseIngredients(recipe.ingredients));
       App.toast('Recipe added ✓');
       openDetail(saved.id);
     }

@@ -145,6 +145,7 @@ const Importer = (() => {
       };
 
       Data.addRecipe(recipe);
+      Data.ensurePriceBookEntries(Recipes.parseIngredients(recipe.ingredients));
       Recipes.render();
       App.toast(`"${d.title}" imported ✓`);
     } catch(err) {
