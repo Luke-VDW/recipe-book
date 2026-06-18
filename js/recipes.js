@@ -55,6 +55,101 @@ const Recipes = (() => {
     return map[u.toLowerCase()] || u.toLowerCase();
   }
 
+  function _esc(s) {
+    return (s || '').replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  }
+
+  let _cookExtraCount = 0;
+
+  function _convertFromBase(qty, baseUnit, targetUnit) {
+    const t = (targetUnit || '').toLowerCase();
+    if (t === 'kg' && baseUnit === 'g')  return { qty: qty / 1000, unit: 'kg' };
+    if (t === 'l'  && baseUnit === 'ml') return { qty: qty / 1000, unit: 'l'  };
+    return { qty, unit: baseUnit };
+  }
+
+  function _buildIngRows(r, servings) {
+    const ings = parseIngredients(r.ingredients);
+    const base = r.servings || 1;
+    const mult = (parseFloat(servings) || 1) / base;
+    if (!ings.length) return '<p style="color:var(--text-muted);font-size:0.88rem;padding:8px 0">No ingredients listed.</p>';
+
+    return ings.map((ing, i) => {
+      if (!ing.qty && ing.qty !== 0) {
+        return `<div class="cook-ing-row cook-ing-untracked">
+        <span class="cook-ing-name">${_esc(ing.name)}</span>
+        <span class="cook-ing-status">no qty — skip</span>
+      </div>`;
+      }
+      const scaledQty = (parseFloat(ing.qty) || 0) * mult;
+      const p = Data.getPantryItem(ing.name);
+
+      if (!p || p.qty <= 0) {
+        return `<div class="cook-ing-row cook-ing-untracked">
+        <span class="cook-ing-name">${_esc(ing.name)}</span>
+        <span class="cook-ing-qty">${fmtQty(scaledQty)} ${_esc(ing.unit || '')}</span>
+        <span class="cook-ing-status">not tracked</span>
+      </div>`;
+      }
+
+      const [pBase, pBaseUnit] = Data.normalizeToBase(p.qty, p.unit, p.gramEquiv);
+      const [dBase, dBaseUnit] = Data.normalizeToBase(scaledQty, ing.unit || '');
+
+      if (pBaseUnit !== dBaseUnit) {
+        return `<div class="cook-ing-row cook-ing-untracked">
+        <span class="cook-ing-name">${_esc(ing.name)}</span>
+        <span class="cook-ing-qty">${fmtQty(scaledQty)} ${_esc(ing.unit || '')}</span>
+        <span class="cook-ing-status">unit mismatch</span>
+      </div>`;
+      }
+
+      if (pBase >= dBase) {
+        const remain = _convertFromBase(pBase - dBase, pBaseUnit, p.unit);
+        return `<div class="cook-ing-row cook-ing-normal">
+        <span class="cook-ing-name">${_esc(ing.name)}</span>
+        <span class="cook-ing-qty">${fmtQty(scaledQty)} ${_esc(ing.unit || '')}</span>
+        <span class="cook-ing-status">→ ${fmtQty(remain.qty)} ${_esc(remain.unit)} left</span>
+      </div>`;
+      }
+
+      // Shortfall
+      return `<div class="cook-ing-row cook-ing-shortfall">
+      <span class="cook-ing-name">${_esc(ing.name)}</span>
+      <span class="cook-ing-qty">${fmtQty(scaledQty)} ${_esc(ing.unit || '')} needed</span>
+      <div class="cook-shortfall-row">
+        <span class="cook-shortfall-warn">⚠ only ${fmtQty(p.qty)} ${_esc(p.unit)} tracked</span>
+        <label class="cook-shortfall-label">Actual used:
+          <input type="number" id="cook-actual-${i}" class="cook-actual-input"
+            min="0" step="0.01" max="${p.qty}"
+            value="${p.qty}"
+            data-ing-name="${_esc(ing.name.toLowerCase().trim())}"
+            data-pantry-unit="${_esc(p.unit)}"
+            data-pantry-qty="${p.qty}" />
+          ${_esc(p.unit)}
+        </label>
+      </div>
+    </div>`;
+    }).join('');
+  }
+
+  function _deductIngredient(name, scaledQty, unit, ingIdx) {
+    const p = Data.getPantryItem(name);
+    if (!p || p.qty <= 0) return;
+
+    const [pBase, pBaseUnit] = Data.normalizeToBase(p.qty, p.unit, p.gramEquiv);
+    const [dBase, dBaseUnit] = Data.normalizeToBase(scaledQty, unit || '');
+    if (pBaseUnit !== dBaseUnit) return;
+
+    if (pBase < dBase && ingIdx !== null) {
+      const actualInput = document.getElementById('cook-actual-' + ingIdx);
+      const actualUsed = actualInput ? (parseFloat(actualInput.value) || 0) : p.qty;
+      Data.setPantryItem(name, { qty: Math.max(0, p.qty - actualUsed), unit: p.unit });
+    } else {
+      const remain = _convertFromBase(Math.max(0, pBase - dBase), pBaseUnit, p.unit);
+      Data.setPantryItem(name, { qty: remain.qty, unit: remain.unit });
+    }
+  }
+
   function fmtQty(q) {
     if (!q && q !== 0) return '';
     const n = parseFloat(q);
@@ -164,6 +259,7 @@ const Recipes = (() => {
         <button class="btn-secondary" onclick="Recipes.openAddToPlanModal('${r.id}')">📅 Add to Plan</button>
         <button class="btn-secondary" onclick="Recipes.openEditModal('${r.id}')">✏️ Edit</button>
         <button class="btn-danger" onclick="Recipes.confirmDelete('${r.id}')">🗑 Delete</button>
+        <button class="btn-secondary" onclick="Recipes.openCookConfirm('${r.id}')">✅ Just cooked this</button>
       </div>
       <div class="section-label">🥕 INGREDIENTS</div>
       <div id="detail-ingredients">${_renderIngredients(ings, 1)}</div>
@@ -234,6 +330,97 @@ const Recipes = (() => {
     const mealLabel = meal.charAt(0).toUpperCase() + meal.slice(1);
     App.closeModal();
     App.toast(`Added to Week ${week}, ${dayLabel} ${mealLabel} ✓`);
+  }
+
+  function openCookConfirm(id) {
+    const r = Data.getRecipeById(id);
+    if (!r) return;
+    _cookExtraCount = 0;
+    const servings = _targetServings || r.servings || 1;
+    const unitOpts = ['g','100g','kg','ml','100ml','l','item','tsp','tbsp','clove','bunch','head','can','packet','loaf','dozen']
+      .map(u => `<option value="${u}"${u === 'item' ? ' selected' : ''}>${u}</option>`).join('');
+    document.getElementById('modal-content').innerHTML = `
+      <h3>Confirm Cook — ${_esc(r.name)}</h3>
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;flex-wrap:wrap">
+        <label style="margin:0;font-size:0.9rem;white-space:nowrap">Servings cooked</label>
+        <input type="number" id="cook-servings-input" min="1" step="1" value="${servings}"
+          style="width:60px;padding:4px 8px;border:1px solid var(--border);border-radius:6px;font-size:1rem"
+          onchange="Recipes._cookRefresh('${_esc(id)}', this.value)" />
+        <span style="font-size:0.82rem;color:var(--text-muted)">(recipe base: ${r.servings || 1})</span>
+      </div>
+      <div id="cook-ing-rows">${_buildIngRows(r, servings)}</div>
+      <div class="cook-extras-title">Extra ingredients used</div>
+      <div id="cook-extras-list"></div>
+      <button class="btn-small" style="margin-top:4px" onclick="Recipes._cookAddExtra()">＋ Add extra</button>
+      <div class="modal-actions" style="margin-top:16px">
+        <button class="btn-secondary" onclick="App.closeModal()">Cancel</button>
+        <button class="btn-primary" onclick="Recipes.confirmCook('${_esc(id)}')">Confirm &amp; save</button>
+      </div>`;
+    document.getElementById('modal-overlay').classList.remove('hidden');
+  }
+
+  function _cookRefresh(id, servings) {
+    const r = Data.getRecipeById(id);
+    if (!r) return;
+    const el = document.getElementById('cook-ing-rows');
+    if (el) el.innerHTML = _buildIngRows(r, parseFloat(servings) || 1);
+  }
+
+  function _cookAddExtra() {
+    const list = document.getElementById('cook-extras-list');
+    if (!list) return;
+    const n = _cookExtraCount++;
+    const unitOpts = ['g','100g','kg','ml','100ml','l','item','tsp','tbsp','clove','bunch','head','can','packet','loaf','dozen']
+      .map(u => `<option value="${u}"${u === 'item' ? ' selected' : ''}>${u}</option>`).join('');
+    const row = document.createElement('div');
+    row.className = 'cook-extra-row';
+    row.id = 'cook-extra-row-' + n;
+    row.innerHTML = `
+      <input type="text" id="cook-extra-name-${n}" placeholder="Ingredient name"
+        style="flex:1;min-width:0;padding:4px 8px;border:1px solid var(--border);border-radius:6px;font-size:0.85rem" />
+      <input type="number" id="cook-extra-qty-${n}" placeholder="qty" min="0" step="0.01"
+        style="width:60px;padding:4px 6px;border:1px solid var(--border);border-radius:6px;font-size:0.85rem" />
+      <select id="cook-extra-unit-${n}"
+        style="padding:4px 6px;border:1px solid var(--border);border-radius:6px;font-size:0.85rem">${unitOpts}</select>
+      <button onclick="document.getElementById('cook-extra-row-${n}').remove()"
+        style="background:none;border:none;cursor:pointer;color:var(--text-muted);font-size:1.1rem;padding:2px 6px;line-height:1">✕</button>`;
+    list.appendChild(row);
+  }
+
+  function confirmCook(id) {
+    const r = Data.getRecipeById(id);
+    if (!r) return;
+    const servings = parseFloat(document.getElementById('cook-servings-input')?.value) || r.servings || 1;
+    const base = r.servings || 1;
+    const mult = servings / base;
+
+    parseIngredients(r.ingredients).forEach((ing, i) => {
+      if (!ing.qty && ing.qty !== 0) return;
+      _deductIngredient(ing.name, (parseFloat(ing.qty) || 0) * mult, ing.unit || '', i);
+    });
+
+    const extrasList = document.getElementById('cook-extras-list');
+    if (extrasList) {
+      extrasList.querySelectorAll('.cook-extra-row').forEach(row => {
+        const n = row.id.replace('cook-extra-row-', '');
+        const name = (document.getElementById('cook-extra-name-' + n)?.value || '').trim().toLowerCase();
+        const qty  = parseFloat(document.getElementById('cook-extra-qty-' + n)?.value) || 0;
+        const unit = document.getElementById('cook-extra-unit-' + n)?.value || 'item';
+        if (name && qty > 0) _deductIngredient(name, qty, unit, null);
+      });
+    }
+
+    Data.logCook({
+      date: new Date().toISOString().slice(0, 10),
+      recipeId: id,
+      recipeName: r.name,
+      servings,
+      baseServings: base,
+    });
+
+    App.closeModal();
+    App.toast('Cooked ✓');
+    App.refresh();
   }
 
   function confirmDelete(id) {
@@ -458,5 +645,6 @@ const Recipes = (() => {
 
   return { render, filter, openDetail, openAddModal, openEditModal, saveModal, confirmDelete,
            parseIngredients, setServings, openAddToPlanModal, confirmAddToPlan,
-           editCalories, cancelEditCalories, saveCalories, calculateCalories };
+           editCalories, cancelEditCalories, saveCalories, calculateCalories,
+           openCookConfirm, _cookRefresh, _cookAddExtra, confirmCook };
 })();
