@@ -198,6 +198,22 @@ const Data = (() => {
     return [pricePerUnit, 'item'];
   }
 
+  const STRIP_WORDS = /\b(large|small|medium|big|fresh|frozen|dried|diced|chopped|minced|sliced|ground|grated|boneless|skinless|lean|extra|finely|roughly|thinly|thick)\b/gi;
+
+  function ensurePriceBookEntries(parsedIngredients) {
+    if (!_db.priceBook) _db.priceBook = [];
+    let added = false;
+    (parsedIngredients || []).forEach(item => {
+      if (!item.name) return;
+      const normalised = item.name.replace(STRIP_WORDS, '').replace(/\s+/g, ' ').trim().toLowerCase();
+      if (!normalised) return;
+      if (lookupPriceEntry(normalised)) return;
+      _db.priceBook.push({ ingredient: normalised, prices: [] });
+      added = true;
+    });
+    if (added) save();
+  }
+
   // ── Price Book CRUD ──────────────────
   function getPriceBook() { return _db.priceBook || []; }
 
@@ -571,7 +587,7 @@ const Data = (() => {
     exportJSON, importJSON, handleImportFile, clearAll,
     loadStarterData, loadStarterPrices, getClientId, setClientId,
     getPriceBook, setPriceEntry, removePriceEntry, removeIngredient,
-    lookupPriceEntry, lookupPrice,
+    lookupPriceEntry, lookupPrice, ensurePriceBookEntries,
     setPantryItem, removePantryItem, clearPantryPerishables, getPantryItem,
     getSpendLog, logSpend, clearSpendLog,
     DAYS, MEALS,
