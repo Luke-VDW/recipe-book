@@ -376,7 +376,7 @@ const Shopping = (() => {
     if (matches.length === 0) { suggestionsEl.classList.add('hidden'); return; }
     suggestionsEl.classList.remove('hidden');
     suggestionsEl.innerHTML = matches
-      .map(name => `<div class="adhoc-suggestion" onclick="Shopping._adhocSelect('${_esc(name)}')">${_esc(name)}</div>`)
+      .map(name => `<div class="adhoc-suggestion" data-name="${_esc(name)}" onclick="Shopping._adhocSelect(this.dataset.name)">${_esc(name)}</div>`)
       .join('');
   }
 
