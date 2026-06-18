@@ -64,13 +64,28 @@ const Analytics = (() => {
       </div>`;
   }
 
+  function _buildCookSection() {
+    const cookLog = Data.getCookLog();
+    const recentCooks = cookLog.slice().reverse().slice(0, 10);
+    const rows = recentCooks.length === 0
+      ? '<p class="analytics-empty-sub">No cooks logged yet. Use "Just cooked this" on any recipe.</p>'
+      : recentCooks.map(entry => `
+          <div class="analytics-cook-row">
+            <span class="analytics-cook-date">${_fmtDate(entry.date)}</span>
+            <span class="analytics-cook-name">${_esc(entry.recipeName)}</span>
+            <span class="analytics-cook-servings">${entry.servings} serving${entry.servings !== 1 ? 's' : ''}</span>
+          </div>`).join('');
+    return `<div class="analytics-section-title">Recent Cooks</div>${rows}`;
+  }
+
   function render() {
     const el = document.getElementById('analytics-content');
     if (!el) return;
     const log = Data.getSpendLog();
 
     if (log.length === 0) {
-      el.innerHTML = `<div class="empty-state"><span class="emoji">📊</span>No spend data yet.<br>Use "Confirm Shop" on the shopping list to log your first shop.</div>`;
+      el.innerHTML = `<div class="empty-state"><span class="emoji">📊</span>No spend data yet.<br>Use "Confirm Shop" on the shopping list to log your first shop.</div>`
+        + _buildCookSection();
       return;
     }
 
@@ -156,7 +171,8 @@ const Analytics = (() => {
       + `<div class="analytics-section-title">Monthly Spend</div>${monthlyHtml}`
       + `<div class="analytics-section-title">This Month by Category</div>${catHtml}`
       + `<div class="analytics-section-title">Recent Shops</div>${shopsHtml}`
-      + `<button class="btn-danger" style="margin-top:24px;width:100%" onclick="Analytics.clearLog()">🗑 Clear Spend Log</button>`;
+      + `<button class="btn-danger" style="margin-top:24px;width:100%" onclick="Analytics.clearLog()">🗑 Clear Spend Log</button>`
+      + _buildCookSection();
   }
 
   function clearLog() {
