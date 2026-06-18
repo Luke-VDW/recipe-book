@@ -4,9 +4,7 @@
 
 const Shopping = (() => {
 
-  let _userUnchecked = new Set(); // ingredient names (lowercase) the user explicitly unticked
-  let _logItems = []; // items captured when Log Purchase modal was opened
-  let _pendingSpend = null;
+  // (no session state — per-item state lives on _db.shoppingList items directly)
 
   // Simple category guesser
   const CAT_MAP = {
@@ -102,21 +100,87 @@ const Shopping = (() => {
     </div>`;
   }
 
-  function _renderPantryBadge(item) {
-    const pantryItem = Data.getPantryItem(item.name);
-    if (!pantryItem || pantryItem.qty <= 0) return '';
-    const [shoppingBase, shoppingBaseUnit] = Data.normalizeToBase(item.qty || 0, item.unit);
-    const [pantryBase, pantryBaseUnit] = Data.normalizeToBase(pantryItem.qty, pantryItem.unit, pantryItem.gramEquiv);
-    if (shoppingBaseUnit === pantryBaseUnit) {
-      if (pantryBase >= (item.qty ? shoppingBase : 0)) {
-        return `<div class="pantry-in-stock">✓ In pantry (${_fmtPantryQty(pantryItem.qty)} ${_esc(pantryItem.unit)})</div>`;
-      }
-      return `<div class="pantry-partial-stock">In pantry: ${_fmtPantryQty(pantryItem.qty)} ${_esc(pantryItem.unit)}</div>`;
-    }
-    return `<div class="pantry-partial-stock">In pantry: ${_fmtPantryQty(pantryItem.qty)} ${_esc(pantryItem.unit)}</div>`;
+  function _fmtPantryQty(q) { return fmtQty(q) || '0'; }
+
+  function _hasPantryStock(item) {
+    const p = Data.getPantryItem(item.name);
+    return !!(p && p.qty > 0);
   }
 
-  function _fmtPantryQty(q) { return fmtQty(q) || '0'; }
+  function _renderItem(item) {
+    const qty = fmtQty(item.qty);
+    const label = qty ? `${qty}${item.unit ? ' ' + item.unit : ''} ${item.name}` : item.name;
+
+    const hasSources = item.sources && item.sources.length > 0 &&
+      (item.sources.length > 1 || (item.sources[0] && item.sources[0].context));
+    let sourcesHtml = '';
+    if (hasSources) {
+      const sourceRows = item.sources.map(s => {
+        const ctxParts = [];
+        if (s.qty) ctxParts.push(fmtQty(s.qty) + (s.unit ? ' ' + s.unit : ''));
+        if (s.context) ctxParts.push(s.context);
+        return `<div class="shop-source-row">
+          <span class="shop-source-recipe">${s.recipe}</span>
+          ${ctxParts.length ? `<span class="shop-source-ctx">${ctxParts.join(' · ')}</span>` : ''}
+        </div>`;
+      }).join('');
+      sourcesHtml = `<div id="shop-sources-${item._idx}" class="shop-item-sources hidden">${sourceRows}</div>`;
+    }
+
+    const srcBtn = hasSources
+      ? `<button id="shop-src-btn-${item._idx}" class="shop-src-toggle" onclick="Shopping.toggleSources(${item._idx})">View recipes ▾</button>`
+      : '';
+
+    if (item.pantryUsed) {
+      const p = Data.getPantryItem(item.name);
+      const pantryQtyHtml = p && p.qty > 0
+        ? `<span class="shop-pantry-qty">· In pantry (${_fmtPantryQty(p.qty)} ${_esc(p.unit)})</span>`
+        : '';
+      return `
+        <div class="shop-item pantry-used" id="shop-item-${item._idx}">
+          <input type="checkbox" disabled />
+          <div class="shop-item-main">
+            <div class="shop-item-top">
+              <span class="shop-item-name">${_esc(label)} 🏠</span>
+              ${srcBtn}
+            </div>
+            <div class="shop-pantry-used-row">
+              <button class="shop-undo-pantry" onclick="Shopping.markPantryUsed(${item._idx})">✕ undo pantry</button>
+              ${pantryQtyHtml}
+            </div>
+            ${sourcesHtml}
+          </div>
+        </div>`;
+    }
+
+    const usePantryBtn = (!item.checked && _hasPantryStock(item))
+      ? `<div class="shop-pantry-row"><button class="shop-use-pantry-btn" onclick="Shopping.markPantryUsed(${item._idx})">Use pantry ●</button></div>`
+      : '';
+
+    const actualInput = `<input type="number" class="shop-actual-input" id="shop-actual-${item._idx}"
+      step="0.01" min="0"
+      value="${item.actualPrice != null ? item.actualPrice : ''}"
+      placeholder="actual R"
+      onchange="Shopping.setActualPrice(${item._idx}, this.value)" />`;
+
+    return `
+      <div class="shop-item ${item.checked ? 'checked' : ''}" id="shop-item-${item._idx}">
+        <input type="checkbox" ${item.checked ? 'checked' : ''}
+          onchange="Shopping.toggle(${item._idx})" />
+        <div class="shop-item-main">
+          <div class="shop-item-top">
+            <span class="shop-item-name">${_esc(label)}</span>
+            ${srcBtn}
+          </div>
+          ${usePantryBtn}
+          <div class="shop-price-row">
+            ${_renderPriceDisplay(item._idx, item)}
+            <div class="shop-actual-wrap">${actualInput}</div>
+          </div>
+          ${sourcesHtml}
+        </div>
+      </div>`;
+  }
 
   function editPrice(idx) {
     const items = Data.getShoppingList();
@@ -178,22 +242,6 @@ const Shopping = (() => {
   }
 
   function render() {
-    // Auto-tick items fully covered by pantry stock (cross-unit aware)
-    const preItems = Data.getShoppingList();
-    preItems.forEach((item, idx) => {
-      if (item.checked) return;
-      if (_userUnchecked.has(item.name.toLowerCase().trim())) return; // user explicitly unticked
-      const pantry = Data.getPantry();
-      const pantryItem = pantry.find(p => p.ingredient.toLowerCase() === item.name.toLowerCase().trim());
-      if (!pantryItem || pantryItem.qty <= 0) return;
-      if (!item.qty) return; // skip items with no specified quantity
-      const [shoppingBase, shoppingBaseUnit] = Data.normalizeToBase(item.qty, item.unit);
-      const [pantryBase, pantryBaseUnit] = Data.normalizeToBase(pantryItem.qty, pantryItem.unit, pantryItem.gramEquiv);
-      if (shoppingBaseUnit === pantryBaseUnit && pantryBase >= shoppingBase) {
-        Data.toggleShoppingItem(idx);
-      }
-    });
-
     const items = Data.getShoppingList();
     const el = document.getElementById('shopping-list');
     if (!el) return;
@@ -214,42 +262,7 @@ const Shopping = (() => {
     const orderedCats = catOrder.filter(c => groups[c]);
 
     el.innerHTML = orderedCats.map(cat => {
-      const catItems = groups[cat];
-      const rows = catItems.map(item => {
-        const qty = fmtQty(item.qty);
-        const label = qty ? `${qty}${item.unit ? ' ' + item.unit : ''} ${item.name}` : item.name;
-
-        const hasSources = item.sources && item.sources.length > 0 &&
-          (item.sources.length > 1 || (item.sources[0] && item.sources[0].context));
-        let sourcesHtml = '';
-        if (hasSources) {
-          const sourceRows = item.sources.map(s => {
-            const ctxParts = [];
-            if (s.qty) ctxParts.push(fmtQty(s.qty) + (s.unit ? ' ' + s.unit : ''));
-            if (s.context) ctxParts.push(s.context);
-            return `<div class="shop-source-row">
-              <span class="shop-source-recipe">${s.recipe}</span>
-              ${ctxParts.length ? `<span class="shop-source-ctx">${ctxParts.join(' · ')}</span>` : ''}
-            </div>`;
-          }).join('');
-          sourcesHtml = `<div id="shop-sources-${item._idx}" class="shop-item-sources hidden">${sourceRows}</div>`;
-        }
-
-        return `
-          <div class="shop-item ${item.checked ? 'checked' : ''}" id="shop-item-${item._idx}">
-            <input type="checkbox" ${item.checked ? 'checked' : ''}
-              onchange="Shopping.toggle(${item._idx})" />
-            <div class="shop-item-main">
-              <div class="shop-item-top">
-                <span class="shop-item-name">${label}</span>
-                ${hasSources ? `<button id="shop-src-btn-${item._idx}" class="shop-src-toggle" onclick="Shopping.toggleSources(${item._idx})">View recipes ▾</button>` : ''}
-              </div>
-              ${_renderPantryBadge(item)}
-              ${_renderPriceDisplay(item._idx, item)}
-              ${sourcesHtml}
-            </div>
-          </div>`;
-      }).join('');
+      const rows = groups[cat].map(item => _renderItem(item)).join('');
       return `
         <div class="shop-category">
           <div class="shop-cat-label">${cat.toUpperCase()}</div>
@@ -267,18 +280,34 @@ const Shopping = (() => {
   }
 
   function toggle(idx) {
-    Data.toggleShoppingItem(idx);
     const items = Data.getShoppingList();
-    const name = (items[idx]?.name || '').toLowerCase().trim();
-    if (name) {
-      if (!items[idx].checked) {
-        _userUnchecked.add(name); // user manually unticked — don't re-auto-tick
-      } else {
-        _userUnchecked.delete(name); // user re-checked it — allow auto-tick again
-      }
+    const item = items[idx];
+    if (!item) return;
+    if (!item.checked && item.pantryUsed) {
+      Data.updateShoppingItem(idx, { pantryUsed: false });
     }
+    Data.toggleShoppingItem(idx);
+    const updated = Data.getShoppingList();
     const el = document.getElementById('shop-item-' + idx);
-    if (el) el.classList.toggle('checked', items[idx]?.checked);
+    if (el) el.classList.toggle('checked', !!updated[idx]?.checked);
+  }
+
+  function markPantryUsed(idx) {
+    const items = Data.getShoppingList();
+    const item = items[idx];
+    if (!item) return;
+    const newState = !item.pantryUsed;
+    Data.updateShoppingItem(idx, {
+      pantryUsed: newState,
+      checked: newState ? false : item.checked,
+    });
+    render();
+  }
+
+  function setActualPrice(idx, value) {
+    const price = parseFloat(value);
+    Data.updateShoppingItem(idx, { actualPrice: (isNaN(price) || price < 0) ? null : price });
+    render();
   }
 
   function clearChecked() {
@@ -288,90 +317,5 @@ const Shopping = (() => {
     App.toast('Checked items removed');
   }
 
-  function openLogPurchase() {
-    _logItems = Data.getShoppingList().filter(i => !i.checked);
-    const items = _logItems;
-    if (items.length === 0) {
-      App.toast('Nothing to log — all items are already ticked', 'warn');
-      return;
-    }
-    const rows = items.map((item, i) => {
-      const qty = item.qty || 1;
-      return `
-        <div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border);">
-          <span style="flex:1;font-size:0.9rem;text-transform:capitalize">${_esc(item.name)}</span>
-          <input type="number" id="log-qty-${i}" step="0.1" min="0"
-            value="${qty}" style="width:60px;padding:4px;border:1px solid var(--border);border-radius:6px;" />
-          <span style="font-size:0.85rem;color:var(--text-muted)">${_esc(item.unit || '')}</span>
-        </div>`;
-    }).join('');
-    document.getElementById('modal-content').innerHTML = `
-      <h3>Log Purchase</h3>
-      <p style="font-size:0.85rem;color:var(--text-muted);margin-bottom:12px">Confirm quantities to add to pantry:</p>
-      <div>${rows}</div>
-      <div class="modal-actions" style="margin-top:16px">
-        <button class="btn-secondary" onclick="App.closeModal()">Cancel</button>
-        <button class="btn-primary" onclick="Shopping.confirmPurchase()">Confirm &amp; Update Pantry</button>
-      </div>`;
-    document.getElementById('modal-overlay').classList.remove('hidden');
-  }
-
-  function confirmPurchase() {
-    const items = _logItems;
-    items.forEach((item, i) => {
-      const qty = parseFloat(document.getElementById('log-qty-' + i)?.value) || 0;
-      if (qty > 0) {
-        Data.setPantryItem(item.name, { qty, unit: item.unit || 'item' });
-      }
-    });
-    App.closeModal();
-    App.toast('Pantry updated ✓');
-    render();
-  }
-
-  function openCompleteShop() {
-    const items = Data.getShoppingList();
-    const pricedItems = items.map(item => {
-      const cost = Data.lookupPrice(item.name, item.qty, item.unit);
-      return cost != null && cost > 0 ? { name: item.name, qty: item.qty, unit: item.unit, cost } : null;
-    }).filter(Boolean);
-
-    if (pricedItems.length === 0) {
-      App.toast('No prices set — add prices to the Price Book first', 'warn');
-      return;
-    }
-
-    const total = Math.round(pricedItems.reduce((s, i) => s + i.cost, 0) * 100) / 100;
-    _pendingSpend = {
-      date: new Date().toISOString().slice(0, 10),
-      total,
-      items: pricedItems,
-    };
-
-    const rows = pricedItems.map(item =>
-      `<div style="padding:4px 0;font-size:0.9rem">${_esc(item.name)} × ${item.qty || ''} ${_esc(item.unit || '')} — R${item.cost.toFixed(2)}</div>`
-    ).join('');
-
-    document.getElementById('modal-content').innerHTML = `
-      <h3>Complete Shop</h3>
-      <div style="max-height:40vh;overflow-y:auto;margin-bottom:12px">${rows}</div>
-      <div style="font-weight:700;font-size:1.05rem;margin-bottom:16px">Total: R${total.toFixed(2)}</div>
-      <div class="modal-actions">
-        <button class="btn-secondary" onclick="App.closeModal()">Cancel</button>
-        <button class="btn-primary" onclick="Shopping.confirmCompleteShop()">Log Spend &amp; Clear List</button>
-      </div>`;
-    document.getElementById('modal-overlay').classList.remove('hidden');
-  }
-
-  function confirmCompleteShop() {
-    if (!_pendingSpend) return;
-    Data.logSpend(_pendingSpend);
-    _pendingSpend = null;
-    clearChecked();
-    App.closeModal();
-    App.toast('Shop logged ✓');
-    render();
-  }
-
-  return { render, toggle, toggleSources, clearChecked, editPrice, savePrice, openLogPurchase, confirmPurchase, openCompleteShop, confirmCompleteShop };
+  return { render, toggle, toggleSources, clearChecked, editPrice, savePrice, markPantryUsed, setActualPrice };
 })();
