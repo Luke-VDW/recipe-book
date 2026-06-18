@@ -399,6 +399,146 @@ const Shopping = (() => {
     App.toast('Item added ✓');
   }
 
+  function _updateConfirmTotal(bought) {
+    const includeEst = document.getElementById('confirm-include-est')?.checked;
+    let total = 0;
+    bought.forEach(item => {
+      if (item.actualPrice != null) {
+        total += item.actualPrice;
+      } else if (includeEst) {
+        const est = Data.lookupPrice(item.name, item.qty, item.unit);
+        if (est != null) total += est;
+      }
+    });
+    const display = document.getElementById('confirm-total-display');
+    if (display) display.textContent = `R ${total.toFixed(2)}`;
+  }
+
+  function openConfirmShop() {
+    const items = Data.getShoppingList();
+    const bought = items.filter(i => i.checked);
+    const pantryItems = items.filter(i => i.pantryUsed);
+
+    if (bought.length === 0 && pantryItems.length === 0) {
+      App.toast('Nothing confirmed yet — tick items as bought or mark as pantry use', 'warn');
+      return;
+    }
+
+    const boughtRows = bought.map(item => {
+      const hasActual = item.actualPrice != null && item.actualPrice > 0;
+      const est = Data.lookupPrice(item.name, item.qty, item.unit);
+      let costHtml;
+      if (hasActual) {
+        costHtml = `<span class="confirm-item-cost">R ${item.actualPrice.toFixed(2)}</span>`;
+      } else if (est != null) {
+        costHtml = `<span class="confirm-item-cost"><span class="shop-est-badge">~est</span> R ${est.toFixed(2)}</span>`;
+      } else {
+        costHtml = `<span class="confirm-item-cost"><span class="shop-est-badge">~est</span> —</span>`;
+      }
+      return `<div class="confirm-item-row">
+      <span class="confirm-item-name">${_esc(item.name)}</span>
+      <span class="confirm-item-qty">${fmtQty(item.qty) || ''} ${_esc(item.unit || '')}</span>
+      ${costHtml}
+    </div>`;
+    }).join('');
+
+    const pantryRows = pantryItems.map(item =>
+      `<div class="confirm-item-row">
+      <span class="confirm-item-name">${_esc(item.name)}</span>
+      <span class="confirm-item-qty">${fmtQty(item.qty) || ''} ${_esc(item.unit || '')}</span>
+      <span class="confirm-item-cost" style="color:var(--text-muted);font-style:italic">not purchasing</span>
+    </div>`
+    ).join('');
+
+    const baseTotal = bought.reduce((s, i) => s + (i.actualPrice != null ? i.actualPrice : 0), 0);
+    const hasUnpriced = bought.some(i => i.actualPrice == null);
+
+    const estCheckboxHtml = hasUnpriced ? `
+    <label class="confirm-est-toggle">
+      <input type="checkbox" id="confirm-include-est" />
+      Include estimated prices for unpriced items
+    </label>` : '';
+
+    document.getElementById('modal-content').innerHTML = `
+    <h3>Confirm Shop</h3>
+    <div class="form-group">
+      <label>Store</label>
+      <input type="text" id="confirm-retailer" placeholder="e.g. Woolworths" maxlength="30" />
+    </div>
+    ${bought.length > 0 ? `<div class="confirm-section-title">Purchased (${bought.length})</div>${boughtRows}` : ''}
+    ${pantryItems.length > 0 ? `<div class="confirm-section-title">From pantry (${pantryItems.length})</div>${pantryRows}` : ''}
+    ${estCheckboxHtml}
+    <div class="confirm-total-row">
+      Total: <strong id="confirm-total-display">R ${baseTotal.toFixed(2)}</strong>
+    </div>
+    <div class="form-group" style="margin-top:8px">
+      <label>Override total (optional)</label>
+      <input type="number" id="confirm-total-override" step="0.01" min="0"
+        placeholder="Leave blank to use calculated total" />
+    </div>
+    <div class="modal-actions">
+      <button class="btn-secondary" onclick="App.closeModal()">Cancel</button>
+      <button class="btn-primary" onclick="Shopping.confirmShop()">Confirm &amp; save</button>
+    </div>`;
+    document.getElementById('modal-overlay').classList.remove('hidden');
+
+    const estCb = document.getElementById('confirm-include-est');
+    if (estCb) estCb.addEventListener('change', () => _updateConfirmTotal(bought));
+  }
+
+  function confirmShop() {
+    const items = Data.getShoppingList();
+    const bought = items.filter(i => i.checked);
+    const pantryItems = items.filter(i => i.pantryUsed);
+    const retailer = (document.getElementById('confirm-retailer')?.value || '').trim();
+    const includeEst = document.getElementById('confirm-include-est')?.checked || false;
+    const overrideRaw = parseFloat(document.getElementById('confirm-total-override')?.value);
+
+    let calculatedTotal = 0;
+    bought.forEach(item => {
+      if (item.actualPrice != null) {
+        calculatedTotal += item.actualPrice;
+      } else if (includeEst) {
+        const est = Data.lookupPrice(item.name, item.qty, item.unit);
+        if (est != null) calculatedTotal += est;
+      }
+    });
+    const finalTotal = (!isNaN(overrideRaw) && overrideRaw >= 0) ? overrideRaw : calculatedTotal;
+
+    // 1. Update price book for bought items with actualPrice
+    bought.forEach(item => {
+      if (item.actualPrice != null && item.qty) {
+        Data.setPriceEntry(item.name.toLowerCase().trim(), {
+          unit: item.unit || 'item',
+          pricePerUnit: item.actualPrice / item.qty,
+          retailer,
+        });
+      }
+    });
+
+    // 2. Update pantry for bought items
+    bought.forEach(item => {
+      if (item.qty) Data.setPantryItem(item.name, { qty: item.qty, unit: item.unit || 'item' });
+    });
+
+    // 3. Log spend
+    const spendItems = bought.map(item => {
+      const hasActual = item.actualPrice != null;
+      const cost = hasActual
+        ? item.actualPrice
+        : (Data.lookupPrice(item.name, item.qty, item.unit) || 0);
+      return { name: item.name, qty: item.qty, unit: item.unit, cost, estimated: !hasActual };
+    });
+    Data.logSpend({ date: new Date().toISOString().slice(0, 10), total: finalTotal, retailer, items: spendItems });
+
+    // 4. Remove confirmed items; keep unchecked, non-pantry-used items
+    Data.setShoppingList(items.filter(i => !i.checked && !i.pantryUsed));
+
+    App.closeModal();
+    App.toast('Shop confirmed ✓');
+    render();
+  }
+
   function clearChecked() {
     const items = Data.getShoppingList().filter(i => !i.checked && !i.pantryUsed);
     Data.setShoppingList(items);
@@ -406,5 +546,5 @@ const Shopping = (() => {
     App.toast('Checked items removed');
   }
 
-  return { render, toggle, toggleSources, clearChecked, editPrice, savePrice, markPantryUsed, setActualPrice, openAddAdHocItem, _adhocAutocomplete, _adhocSelect, saveAdHocItem };
+  return { render, toggle, toggleSources, clearChecked, editPrice, savePrice, markPantryUsed, setActualPrice, openAddAdHocItem, _adhocAutocomplete, _adhocSelect, saveAdHocItem, openConfirmShop, confirmShop };
 })();
