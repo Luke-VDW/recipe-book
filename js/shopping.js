@@ -332,6 +332,73 @@ const Shopping = (() => {
     render();
   }
 
+  function openAddAdHocItem() {
+    const unitOpts = ['g','100g','kg','ml','100ml','l','item','tsp','tbsp','clove','bunch','head','can','packet','loaf','dozen']
+      .map(u => `<option value="${u}"${u === 'item' ? ' selected' : ''}>${u}</option>`).join('');
+    document.getElementById('modal-content').innerHTML = `
+      <h3>Add item</h3>
+      <div class="form-group">
+        <label>Name</label>
+        <div style="position:relative">
+          <input type="text" id="adhoc-name" autocomplete="off" placeholder="e.g. milk"
+            oninput="Shopping._adhocAutocomplete(this.value)"
+            style="width:100%;box-sizing:border-box" />
+          <div id="adhoc-suggestions" class="adhoc-suggestions hidden"></div>
+        </div>
+      </div>
+      <div style="display:flex;gap:8px">
+        <div class="form-group" style="flex:1">
+          <label>Qty</label>
+          <input type="number" id="adhoc-qty" step="0.1" min="0" placeholder="1" />
+        </div>
+        <div class="form-group" style="flex:1">
+          <label>Unit</label>
+          <select id="adhoc-unit">${unitOpts}</select>
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button class="btn-secondary" onclick="App.closeModal()">Cancel</button>
+        <button class="btn-primary" onclick="Shopping.saveAdHocItem()">Add to list</button>
+      </div>`;
+    document.getElementById('modal-overlay').classList.remove('hidden');
+    document.getElementById('adhoc-name')?.focus();
+  }
+
+  function _adhocAutocomplete(query) {
+    const suggestionsEl = document.getElementById('adhoc-suggestions');
+    if (!suggestionsEl) return;
+    const q = (query || '').toLowerCase().trim();
+    if (q.length < 2) { suggestionsEl.classList.add('hidden'); return; }
+    const matches = Data.getPriceBook()
+      .map(e => e.ingredient)
+      .filter(name => name.includes(q))
+      .slice(0, 6);
+    if (matches.length === 0) { suggestionsEl.classList.add('hidden'); return; }
+    suggestionsEl.classList.remove('hidden');
+    suggestionsEl.innerHTML = matches
+      .map(name => `<div class="adhoc-suggestion" onclick="Shopping._adhocSelect('${_esc(name)}')">${_esc(name)}</div>`)
+      .join('');
+  }
+
+  function _adhocSelect(name) {
+    const input = document.getElementById('adhoc-name');
+    if (input) input.value = name;
+    const suggestionsEl = document.getElementById('adhoc-suggestions');
+    if (suggestionsEl) suggestionsEl.classList.add('hidden');
+  }
+
+  function saveAdHocItem() {
+    const name = (document.getElementById('adhoc-name')?.value || '').trim().toLowerCase();
+    const qty = parseFloat(document.getElementById('adhoc-qty')?.value) || null;
+    const unit = document.getElementById('adhoc-unit')?.value || 'item';
+    if (!name) { App.toast('Enter an item name', 'warn'); return; }
+    Data.addShoppingItem({ name, qty, unit, adhoc: true, checked: false });
+    Data.ensurePriceBookEntries([{ name }]);
+    App.closeModal();
+    render();
+    App.toast('Item added ✓');
+  }
+
   function clearChecked() {
     const items = Data.getShoppingList().filter(i => !i.checked && !i.pantryUsed);
     Data.setShoppingList(items);
@@ -339,5 +406,5 @@ const Shopping = (() => {
     App.toast('Checked items removed');
   }
 
-  return { render, toggle, toggleSources, clearChecked, editPrice, savePrice, markPantryUsed, setActualPrice };
+  return { render, toggle, toggleSources, clearChecked, editPrice, savePrice, markPantryUsed, setActualPrice, openAddAdHocItem, _adhocAutocomplete, _adhocSelect, saveAdHocItem };
 })();
