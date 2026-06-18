@@ -117,10 +117,10 @@ const Shopping = (() => {
     if (hasSources) {
       const sourceRows = item.sources.map(s => {
         const ctxParts = [];
-        if (s.qty) ctxParts.push(fmtQty(s.qty) + (s.unit ? ' ' + s.unit : ''));
-        if (s.context) ctxParts.push(s.context);
+        if (s.qty) ctxParts.push(fmtQty(s.qty) + (s.unit ? ' ' + _esc(s.unit) : ''));
+        if (s.context) ctxParts.push(_esc(s.context));
         return `<div class="shop-source-row">
-          <span class="shop-source-recipe">${s.recipe}</span>
+          <span class="shop-source-recipe">${_esc(s.recipe)}</span>
           ${ctxParts.length ? `<span class="shop-source-ctx">${ctxParts.join(' · ')}</span>` : ''}
         </div>`;
       }).join('');
@@ -311,7 +311,7 @@ const Shopping = (() => {
   }
 
   function clearChecked() {
-    const items = Data.getShoppingList().filter(i => !i.checked);
+    const items = Data.getShoppingList().filter(i => !i.checked && !i.pantryUsed);
     Data.setShoppingList(items);
     render();
     App.toast('Checked items removed');
