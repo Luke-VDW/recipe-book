@@ -61,6 +61,7 @@ const Data = (() => {
     }
     item.qty = parseFloat(opts.qty) || 0;
     item.unit = opts.unit || item.unit;
+    if (opts.gramEquiv) { item.gramEquiv = parseFloat(opts.gramEquiv); } else { delete item.gramEquiv; }
     if (opts.perishable !== undefined) item.perishable = !!opts.perishable;
     item.updatedDate = new Date().toISOString().slice(0, 10);
     save();
@@ -171,7 +172,7 @@ const Data = (() => {
   }
 
   // ── Unit conversion helpers ──────────
-  function _normalizeToBase(qty, unit) {
+  function normalizeToBase(qty, unit, gramEquiv) {
     const u = (unit || '').toLowerCase();
     if (u === 'kg')   return [qty * 1000, 'g'];
     if (u === 'g')    return [qty, 'g'];
@@ -182,10 +183,13 @@ const Data = (() => {
     if (u === 'cup')  return [qty * 240, 'ml'];
     if (u === 'oz')   return [qty * 28.35, 'g'];
     if (u === 'lb')   return [qty * 453.6, 'g'];
+    if (u === 'clove') return [qty * 5, 'g'];
+    if (u === 'dozen') return [qty * 12, 'item'];
+    if (['can','packet','loaf','bunch','head'].includes(u) && gramEquiv) return [qty * gramEquiv, 'g'];
     return [qty, 'item'];
   }
 
-  function _pricePerBase(pricePerUnit, pbUnit) {
+  function _pricePerBase(pricePerUnit, pbUnit, gramEquiv) {
     if (pbUnit === 'g')     return [pricePerUnit, 'g'];
     if (pbUnit === '100g')  return [pricePerUnit / 100, 'g'];
     if (pbUnit === 'kg')    return [pricePerUnit / 1000, 'g'];
@@ -195,6 +199,9 @@ const Data = (() => {
     if (pbUnit === 'tsp')   return [pricePerUnit / 5, 'ml'];
     if (pbUnit === 'tbsp')  return [pricePerUnit / 15, 'ml'];
     if (pbUnit === 'cup')   return [pricePerUnit / 240, 'ml'];
+    if (pbUnit === 'clove') return [pricePerUnit / 5, 'g'];
+    if (pbUnit === 'dozen') return [pricePerUnit / 12, 'item'];
+    if (['can','packet','loaf','bunch','head'].includes(pbUnit) && gramEquiv) return [pricePerUnit / gramEquiv, 'g'];
     return [pricePerUnit, 'item'];
   }
 
@@ -231,6 +238,7 @@ const Data = (() => {
       retailer: (priceEntry.retailer || '').trim(),
       updatedDate: new Date().toISOString().slice(0, 10),
     };
+    if (priceEntry.gramEquiv) entry.gramEquiv = parseFloat(priceEntry.gramEquiv);
     const rowIdx = card.prices.findIndex(
       p => p.unit === entry.unit && p.retailer.toLowerCase() === entry.retailer.toLowerCase()
     );
@@ -270,9 +278,9 @@ const Data = (() => {
     if (!card) return null;
     const parsedQty = parseFloat(qty) || 0;
     if (parsedQty === 0) return 0;
-    const [baseQty, baseType] = _normalizeToBase(parsedQty, unit || '');
+    const [baseQty, baseType] = normalizeToBase(parsedQty, unit || '');
     const compatible = card.prices
-      .map(p => _pricePerBase(p.pricePerUnit, p.unit))
+      .map(p => _pricePerBase(p.pricePerUnit, p.unit, p.gramEquiv))
       .filter(([, t]) => t === baseType)
       .map(([ppb]) => ppb);
     if (compatible.length === 0) return null;
@@ -590,6 +598,7 @@ const Data = (() => {
     lookupPriceEntry, lookupPrice, ensurePriceBookEntries,
     setPantryItem, removePantryItem, clearPantryPerishables, getPantryItem,
     getSpendLog, logSpend, clearSpendLog,
+    normalizeToBase,
     DAYS, MEALS,
   };
 })();
