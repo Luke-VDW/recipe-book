@@ -932,3 +932,31 @@ body {
 /* Analytics Edit button */
 .btn-mini { font-size: 0.72rem; padding: 2px 8px; border: 1px solid var(--border); border-radius: 5px; background: var(--surface); cursor: pointer; }
 .btn-mini:hover { border-color: var(--md-green); color: var(--md-green); }
+
+/* ── Cook confirmation modal (Sub-project C) ───────── */
+
+/* Ingredient rows */
+.cook-ing-row { display: flex; align-items: center; gap: 8px; padding: 5px 0; border-bottom: 1px solid var(--border); font-size: 0.88rem; flex-wrap: wrap; }
+.cook-ing-name { flex: 1; min-width: 120px; text-transform: capitalize; }
+.cook-ing-qty { font-size: 0.82rem; color: var(--text-muted); white-space: nowrap; }
+.cook-ing-status { font-size: 0.8rem; color: var(--md-green); white-space: nowrap; }
+.cook-ing-untracked .cook-ing-name { color: var(--text-muted); }
+.cook-ing-untracked .cook-ing-status { color: var(--text-muted); font-style: italic; }
+
+/* Shortfall row */
+.cook-ing-shortfall { background: #fffbeb; border-left: 3px solid #f59e0b; padding-left: 6px; border-radius: 2px; }
+.cook-shortfall-row { width: 100%; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 3px; padding-bottom: 2px; }
+.cook-shortfall-warn { font-size: 0.78rem; color: #92400e; }
+.cook-shortfall-label { font-size: 0.82rem; display: flex; align-items: center; gap: 4px; color: var(--text-muted); }
+.cook-actual-input { width: 65px; padding: 2px 6px; border: 1px solid #f59e0b; border-radius: 6px; font-size: 0.82rem; }
+
+/* Extras section */
+.cook-extras-title { font-size: 0.78rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: .05em; margin: 14px 0 6px; }
+.cook-extra-row { display: flex; align-items: center; gap: 6px; margin-bottom: 6px; }
+
+/* Analytics cook log */
+.analytics-cook-row { display: flex; align-items: center; gap: 10px; padding: 6px 0; border-bottom: 1px solid var(--border); font-size: 0.88rem; }
+.analytics-cook-date { color: var(--text-muted); font-size: 0.82rem; white-space: nowrap; min-width: 52px; }
+.analytics-cook-name { flex: 1; text-transform: capitalize; }
+.analytics-cook-servings { font-size: 0.8rem; color: var(--text-muted); white-space: nowrap; }
+.analytics-empty-sub { font-size: 0.85rem; color: var(--text-muted); padding: 8px 0; margin: 0; }
