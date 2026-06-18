@@ -16,6 +16,10 @@ const Pantry = (() => {
     const unitLabel = document.getElementById('pantry-gram-equiv-unit');
     if (group) group.style.display = show ? '' : 'none';
     if (unitLabel) unitLabel.textContent = val;
+    if (!show) {
+      const geInput = document.getElementById('pantry-form-gramequiv');
+      if (geInput) geInput.value = '';
+    }
   }
 
   function render() {
@@ -130,7 +134,7 @@ const Pantry = (() => {
         </div>
       </div>
       <div class="form-group" id="pantry-gram-equiv-group" style="display:${showGramEquiv ? '' : 'none'}">
-        <label>1 <span id="pantry-gram-equiv-unit">${item.unit}</span> ≈ <input id="pantry-form-gramequiv" type="number" step="1" min="0" value="${item.gramEquiv || ''}" placeholder="e.g. 400" style="width:70px" /> g (optional)</label>
+        <label>1 <span id="pantry-gram-equiv-unit">${_esc(item.unit)}</span> ≈ <input id="pantry-form-gramequiv" type="number" step="1" min="0" value="${item.gramEquiv || ''}" placeholder="e.g. 400" style="width:70px" /> g (optional)</label>
       </div>
       <div class="form-group">
         <label><input type="checkbox" id="pantry-form-perishable" ${item.perishable ? 'checked' : ''} /> Perishable</label>
