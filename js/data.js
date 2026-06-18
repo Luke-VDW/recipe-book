@@ -9,6 +9,7 @@ const Data = (() => {
     version: '1.1',
     lastUpdated: new Date().toISOString(),
     recipes: [],
+    deletedRecipeIds: [],
     mealPlan: { week1:{}, week2:{}, week3:{}, week4:{} },
     pantry: [],
     shoppingList: [],
@@ -33,6 +34,7 @@ const Data = (() => {
       });
       if (!_db.priceBook) _db.priceBook = [];
       if (!_db.spendLog) _db.spendLog = [];
+      if (!_db.deletedRecipeIds) _db.deletedRecipeIds = [];
       // Migrate v1 flat priceBook to v2 nested format — v1 data discarded intentionally, re-seed starter prices
       if (_db.priceBook.length > 0 && _db.priceBook[0].unit !== undefined) {
         _db.priceBook = [];
@@ -128,6 +130,7 @@ const Data = (() => {
 
   function deleteRecipe(id) {
     _db.recipes = _db.recipes.filter(r => r.id !== id);
+    if (!_db.deletedRecipeIds.includes(id)) _db.deletedRecipeIds.push(id);
     // Remove from meal plan too
     ['week1','week2','week3','week4'].forEach(w => {
       DAYS.forEach(d => {
@@ -407,15 +410,33 @@ const Data = (() => {
       if (!dl.ok) throw new Error('Drive download failed: ' + dl.status);
       const remote = await dl.json();
 
-      // Step 2: last-write-wins — remote wins only if its lastUpdated is newer
+      // Step 2: merge recipes from both sides — never let one side silently erase the other.
+      // deletedRecipeIds from BOTH devices are combined so a deletion propagates everywhere.
+      const deletedIds = new Set([
+        ...(_db.deletedRecipeIds || []),
+        ...(remote.deletedRecipeIds || []),
+      ]);
+      const localById = new Map((_db.recipes || []).map(r => [r.id, r]));
+      const mergedRecipes = [...localById.values()].filter(r => !deletedIds.has(r.id));
+      (remote.recipes || []).forEach(r => {
+        if (!localById.has(r.id) && !deletedIds.has(r.id)) mergedRecipes.push(r);
+      });
+
+      // Step 3: last-write-wins for all non-recipe fields (mealPlan, shoppingList, etc.)
       const remoteNewer = remote.lastUpdated && (!_db.lastUpdated || remote.lastUpdated > _db.lastUpdated);
+      const prevRecipeCount = (_db.recipes || []).length;
       if (remoteNewer) {
         _db = { ..._db, ...remote };
-        save();
-        App.refresh();
       }
+      // Always apply the merged recipe list and combined deletion log
+      _db.recipes = mergedRecipes;
+      _db.deletedRecipeIds = [...deletedIds];
 
-      // Step 3: always push local state to Drive
+      save();
+      const changed = remoteNewer || mergedRecipes.length !== prevRecipeCount;
+      if (changed) App.refresh();
+
+      // Step 4: push merged state to Drive
       await _uploadToDrive(fileId, token);
 
       App.toast(remoteNewer ? 'Synced — updated from Drive ✓' : 'Synced with Drive ✓');
