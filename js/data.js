@@ -96,7 +96,13 @@ const Data = (() => {
 
   function logSpend(entry) {
     if (!_db.spendLog) _db.spendLog = [];
-    _db.spendLog.push({ date: entry.date, total: entry.total, items: entry.items });
+    _db.spendLog.push({ date: entry.date, total: entry.total, retailer: entry.retailer || '', items: entry.items });
+    save();
+  }
+
+  function updateSpendEntry(idx, entry) {
+    if (!_db.spendLog || !_db.spendLog[idx]) return;
+    _db.spendLog[idx] = entry;
     save();
   }
 
@@ -153,6 +159,12 @@ const Data = (() => {
 
   function setShoppingList(items) {
     _db.shoppingList = items;
+    save();
+  }
+
+  function addShoppingItem(item) {
+    if (!_db.shoppingList) _db.shoppingList = [];
+    _db.shoppingList.push(item);
     save();
   }
 
@@ -293,6 +305,12 @@ const Data = (() => {
       _db.shoppingList[idx].checked = !_db.shoppingList[idx].checked;
       save();
     }
+  }
+
+  function updateShoppingItem(idx, fields) {
+    if (!_db.shoppingList[idx]) return;
+    Object.assign(_db.shoppingList[idx], fields);
+    save();
   }
 
   // ── Google Drive Sync ────────────────
@@ -590,14 +608,14 @@ const Data = (() => {
   return {
     load, save, getRecipes, getPlan, getPantry, getShoppingList,
     addRecipe, updateRecipe, deleteRecipe, getRecipeById,
-    setMealSlot, setShoppingList, setTreats, setRecipeCalories, toggleShoppingItem,
+    setMealSlot, setShoppingList, addShoppingItem, setTreats, setRecipeCalories, toggleShoppingItem, updateShoppingItem,
     isDriveConnected, connectDrive, disconnectDrive, syncDrive,
     exportJSON, importJSON, handleImportFile, clearAll,
     loadStarterData, loadStarterPrices, getClientId, setClientId,
     getPriceBook, setPriceEntry, removePriceEntry, removeIngredient,
     lookupPriceEntry, lookupPrice, ensurePriceBookEntries,
     setPantryItem, removePantryItem, clearPantryPerishables, getPantryItem,
-    getSpendLog, logSpend, clearSpendLog,
+    getSpendLog, logSpend, clearSpendLog, updateSpendEntry,
     normalizeToBase,
     DAYS, MEALS,
   };
