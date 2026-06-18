@@ -4,6 +4,7 @@
 
 const PriceBook = (() => {
   let _filter = '';
+  let _showOrphansOnly = false;
   let _modalIngredientName = '';
   let _modalPriceIdx = null;
 
@@ -13,14 +14,30 @@ const PriceBook = (() => {
     const entries = Data.getPriceBook();
     const el = document.getElementById('pricebook-list');
     if (!el) return;
+
+    const _recipeIngredientNames = new Set();
+    Data.getRecipes().forEach(r => {
+      Recipes.parseIngredients(r.ingredients).forEach(i => {
+        if (i.name) _recipeIngredientNames.add(i.name.toLowerCase());
+      });
+    });
+    const isOrphaned = ingredientName => {
+      const lower = ingredientName.toLowerCase();
+      for (const ri of _recipeIngredientNames) {
+        if (ri.includes(lower) || lower.includes(ri)) return false;
+      }
+      return true;
+    };
+
     const filterLower = _filter.toLowerCase();
-    const filtered = filterLower
+    let filtered = filterLower
       ? entries.filter(e => e.ingredient.toLowerCase().includes(filterLower))
-      : entries;
+      : entries.slice();
+    if (_showOrphansOnly) filtered = filtered.filter(e => isOrphaned(e.ingredient));
 
     if (filtered.length === 0) {
       el.innerHTML = `<div class="empty-state"><span class="emoji">💰</span>${
-        filterLower ? 'No matches.' : 'No prices yet. Tap ＋ Add to get started.'
+        filterLower || _showOrphansOnly ? 'No matches.' : 'No prices yet. Tap ＋ Add to get started.'
       }</div>
       <button class="pb-add-ingredient-btn" onclick="PriceBook.openAddIngredientForm()">＋ Add ingredient</button>`;
       return;
@@ -28,6 +45,8 @@ const PriceBook = (() => {
 
     el.innerHTML = filtered.map(card => {
       const realIdx = entries.indexOf(card);
+      const orphanBadge = isOrphaned(card.ingredient)
+        ? `<span class="pb-orphan-badge">no recipes</span>` : '';
       const priceRows = card.prices.map((p, pIdx) => {
         const retailerHtml = p.retailer
           ? `<span class="pb-retailer-tag">${_esc(p.retailer)}</span>` : '';
@@ -47,7 +66,7 @@ const PriceBook = (() => {
       return `
         <div class="pb-card">
           <div class="pb-card-header">
-            <span class="pb-card-name">${_esc(card.ingredient)}</span>
+            <span class="pb-card-name">${_esc(card.ingredient)}${orphanBadge}</span>
             <div class="pb-card-actions">
               <button class="btn-mini" onclick="PriceBook.openAddPriceForm(${realIdx})">＋ Add price</button>
               <button class="btn-mini btn-danger-mini" onclick="PriceBook.removeIngredient(${realIdx})">✕ Remove</button>
@@ -60,6 +79,13 @@ const PriceBook = (() => {
 
   function filter() {
     _filter = (document.getElementById('pb-search')?.value || '').trim();
+    render();
+  }
+
+  function toggleOrphans() {
+    _showOrphansOnly = !_showOrphansOnly;
+    const btn = document.getElementById('pb-orphan-toggle');
+    if (btn) btn.classList.toggle('active', _showOrphansOnly);
     render();
   }
 
@@ -220,5 +246,5 @@ const PriceBook = (() => {
     return (s || '').replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
   }
 
-  return { render, filter, openAddIngredientForm, saveNewIngredient, openAddPriceForm, openEditPriceForm, savePrice, removePrice, removeIngredient };
+  return { render, filter, toggleOrphans, openAddIngredientForm, saveNewIngredient, openAddPriceForm, openEditPriceForm, savePrice, removePrice, removeIngredient };
 })();
