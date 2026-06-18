@@ -15,6 +15,7 @@ const Data = (() => {
     shoppingList: [],
     priceBook: [],
     spendLog: [],
+    cookLog: [],
   };
 
   const DAYS = ['monday','tuesday','wednesday','thursday','friday','saturday','sunday'];
@@ -35,6 +36,7 @@ const Data = (() => {
       if (!_db.priceBook) _db.priceBook = [];
       if (!_db.spendLog) _db.spendLog = [];
       if (!_db.deletedRecipeIds) _db.deletedRecipeIds = [];
+      if (!_db.cookLog) _db.cookLog = [];
       // Migrate v1 flat priceBook to v2 nested format — v1 data discarded intentionally, re-seed starter prices
       if (_db.priceBook.length > 0 && _db.priceBook[0].unit !== undefined) {
         _db.priceBook = [];
@@ -464,6 +466,22 @@ const Data = (() => {
     if (!res.ok) throw new Error('Drive upload failed: ' + res.status);
   }
 
+  function getCookLog() {
+    return _db.cookLog || [];
+  }
+
+  function logCook(entry) {
+    if (!_db.cookLog) _db.cookLog = [];
+    _db.cookLog.push({
+      date: entry.date,
+      recipeId: entry.recipeId,
+      recipeName: entry.recipeName,
+      servings: entry.servings,
+      baseServings: entry.baseServings,
+    });
+    save();
+  }
+
   // ── Import / Export ─────────────────
   function exportJSON() {
     const blob = new Blob([JSON.stringify(_db, null, 2)], { type: 'application/json' });
@@ -637,6 +655,7 @@ const Data = (() => {
     lookupPriceEntry, lookupPrice, ensurePriceBookEntries,
     setPantryItem, removePantryItem, clearPantryPerishables, getPantryItem,
     getSpendLog, logSpend, clearSpendLog, updateSpendEntry,
+    getCookLog, logCook,
     normalizeToBase,
     DAYS, MEALS,
   };
