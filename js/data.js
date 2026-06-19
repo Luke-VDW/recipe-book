@@ -37,6 +37,16 @@ const Data = (() => {
       if (!_db.spendLog) _db.spendLog = [];
       if (!_db.deletedRecipeIds) _db.deletedRecipeIds = [];
       if (!_db.cookLog) _db.cookLog = [];
+      if (!_db.pantry) _db.pantry = [];
+      // Migrate: add batches to pantry items that have none
+      _db.pantry.forEach(item => {
+        if (!item.batches) {
+          item.batches = [{ qty: item.qty || 0, date: item.updatedDate || '' }];
+        }
+      });
+      // Init settings
+      if (!_db.settings) _db.settings = {};
+      if (_db.settings.fifo === undefined) _db.settings.fifo = true;
       // Migrate v1 flat priceBook to v2 nested format — v1 data discarded intentionally, re-seed starter prices
       if (_db.priceBook.length > 0 && _db.priceBook[0].unit !== undefined) {
         _db.priceBook = [];
@@ -59,15 +69,82 @@ const Data = (() => {
     if (!_db.pantry) _db.pantry = [];
     const name = (ingredientName || '').toLowerCase().trim();
     let item = _db.pantry.find(p => p.ingredient.toLowerCase() === name);
+    const today = new Date().toISOString().slice(0, 10);
     if (!item) {
-      item = { ingredient: name, qty: 0, unit: 'item', updatedDate: '', perishable: false };
+      item = { ingredient: name, qty: 0, unit: 'item', updatedDate: '', perishable: false, batches: [] };
       _db.pantry.push(item);
     }
     item.qty = parseFloat(opts.qty) || 0;
     item.unit = opts.unit || item.unit;
     if (opts.gramEquiv) { item.gramEquiv = parseFloat(opts.gramEquiv); } else { delete item.gramEquiv; }
     if (opts.perishable !== undefined) item.perishable = !!opts.perishable;
+    item.updatedDate = today;
+    item.batches = [{ qty: item.qty, date: today }];
+    save();
+  }
+
+  function addPantryBatch(ingredientName, qty, unit, opts) {
+    if (!_db.pantry) _db.pantry = [];
+    const name = (ingredientName || '').toLowerCase().trim();
+    const today = new Date().toISOString().slice(0, 10);
+    const batchQty = parseFloat(qty) || 0;
+    let item = _db.pantry.find(p => p.ingredient.toLowerCase() === name);
+    if (!item) {
+      item = { ingredient: name, qty: 0, unit: unit || 'item', updatedDate: today, perishable: false, batches: [] };
+      _db.pantry.push(item);
+    }
+    if (unit) item.unit = unit;
+    if (!item.batches) item.batches = [];
+    const gramEquiv = opts && opts.gramEquiv ? parseFloat(opts.gramEquiv) : undefined;
+    if (gramEquiv) item.gramEquiv = gramEquiv;
+    if (opts && opts.perishable !== undefined) item.perishable = !!opts.perishable;
+    item.batches.push({ qty: batchQty, date: (opts && opts.date) || today });
+    item.qty = item.batches.reduce((s, b) => s + (parseFloat(b.qty) || 0), 0);
+    item.updatedDate = today;
+    save();
+  }
+
+  function deductPantryFIFO(ingredientName, deductAmt, unit) {
+    const name = (ingredientName || '').toLowerCase().trim();
+    const item = (_db.pantry || []).find(p => p.ingredient.toLowerCase() === name);
+    if (!item) return;
+    if (!item.batches) item.batches = [{ qty: item.qty || 0, date: item.updatedDate || '' }];
+
+    let toDeduct = parseFloat(deductAmt) || 0;
+    if (unit && unit.toLowerCase() !== item.unit.toLowerCase()) {
+      const [deductBase, deductBaseUnit] = normalizeToBase(toDeduct, unit, item.gramEquiv);
+      const [itemBase, itemBaseUnit] = normalizeToBase(1, item.unit, item.gramEquiv);
+      if (deductBaseUnit === itemBaseUnit && itemBase > 0) {
+        toDeduct = deductBase / itemBase;
+      } else {
+        return;
+      }
+    }
+
+    item.batches.sort((a, b) => (a.date || '') < (b.date || '') ? -1 : 1);
+
+    let remaining = toDeduct;
+    item.batches = item.batches.map(batch => {
+      if (remaining <= 0) return batch;
+      const take = Math.min(batch.qty, remaining);
+      remaining -= take;
+      return { ...batch, qty: batch.qty - take };
+    }).filter(b => b.qty > 0.0001);
+
+    item.qty = Math.max(0, item.batches.reduce((s, b) => s + b.qty, 0));
     item.updatedDate = new Date().toISOString().slice(0, 10);
+    save();
+    return item;
+  }
+
+  function getFIFO() {
+    if (!_db.settings) return true;
+    return _db.settings.fifo !== false;
+  }
+
+  function setFIFO(enabled) {
+    if (!_db.settings) _db.settings = {};
+    _db.settings.fifo = !!enabled;
     save();
   }
 
@@ -84,7 +161,13 @@ const Data = (() => {
     if (!_db.pantry) return;
     const hasPerishables = _db.pantry.some(p => p.perishable);
     if (!hasPerishables) return;
-    _db.pantry.forEach(p => { if (p.perishable) p.qty = 0; });
+    const today = new Date().toISOString().slice(0, 10);
+    _db.pantry.forEach(p => {
+      if (p.perishable) {
+        p.qty = 0;
+        p.batches = [{ qty: 0, date: today }];
+      }
+    });
     save();
   }
 
@@ -653,7 +736,8 @@ const Data = (() => {
     loadStarterData, loadStarterPrices, getClientId, setClientId,
     getPriceBook, setPriceEntry, removePriceEntry, removeIngredient,
     lookupPriceEntry, lookupPrice, ensurePriceBookEntries,
-    setPantryItem, removePantryItem, clearPantryPerishables, getPantryItem,
+    setPantryItem, addPantryBatch, deductPantryFIFO, getFIFO, setFIFO,
+    removePantryItem, clearPantryPerishables, getPantryItem,
     getSpendLog, logSpend, clearSpendLog, updateSpendEntry,
     getCookLog, logCook,
     normalizeToBase,
