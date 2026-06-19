@@ -27,7 +27,10 @@
     <!-- RECIPES LIST -->
     <section id="view-recipes" class="view active">
       <div class="search-bar">
-        <input id="recipe-search" type="search" placeholder="Search recipes…" oninput="Recipes.filter()" />
+        <div style="position:relative;flex:1;min-width:0">
+          <input id="recipe-search" type="search" placeholder="Search recipes…" oninput="Recipes.filter()" style="width:100%" />
+          <button class="search-clear" onclick="document.getElementById('recipe-search').value='';Recipes.filter()" title="Clear">×</button>
+        </div>
         <select id="recipe-cat-filter" onchange="Recipes.filter()">
           <option value="">All categories</option>
           <option>Breakfast</option>
@@ -46,7 +49,11 @@
         </select>
       </div>
       <div id="recipe-list" class="card-list"></div>
-      <button class="fab" onclick="Recipes.openAddModal()">＋</button>
+      <div id="fab-menu" class="fab-menu hidden">
+        <button class="fab-menu-item" onclick="App.closeFabMenu(); Recipes.openAddModal()">＋ Add manually</button>
+        <button class="fab-menu-item" onclick="App.closeFabMenu(); App.nav('import', null)">🔍 Import recipe</button>
+      </div>
+      <button class="fab" onclick="App.toggleFabMenu()">＋</button>
     </section>
 
     <!-- RECIPE DETAIL -->
@@ -96,6 +103,7 @@
     <section id="view-import" class="view">
       <div class="search-bar">
         <input id="import-search" type="search" placeholder="Search Spoonacular…" />
+        <button class="search-clear" onclick="document.getElementById('import-search').value=''" title="Clear">×</button>
         <button class="btn-primary" onclick="Importer.search()">Search</button>
       </div>
       <div id="import-key-notice" class="notice hidden">
@@ -120,16 +128,7 @@
         <button class="btn-primary" onclick="Settings.saveSpoonKey()">Save Key</button>
         <p id="spoon-quota-display" class="hint"></p>
       </div>
-      <div class="settings-group">
-        <h3>Price Book</h3>
-        <p class="hint">Store prices for ingredients to estimate weekly shopping costs.</p>
-        <button class="btn-secondary" onclick="App.pushView('pricebook','Price Book'); PriceBook.render()">Manage Price Book →</button>
-      </div>
-      <div class="settings-group">
-        <h3>Pantry</h3>
-        <p class="hint">Track what you have at home. Shopping list shows stock levels automatically.</p>
-        <button class="btn-secondary" onclick="App.pushView('pantry','Pantry'); Pantry.render()">Manage Pantry →</button>
-      </div>
+
       <div class="settings-group">
         <h3>Spend Analytics</h3>
         <p class="hint">Track your grocery spend over time with weekly and monthly breakdowns.</p>
@@ -159,6 +158,7 @@
       <div class="search-bar">
         <input id="pb-search" type="search" placeholder="Search ingredients…"
           oninput="PriceBook.filter()" />
+        <button class="search-clear" onclick="document.getElementById('pb-search').value='';PriceBook.filter()" title="Clear">×</button>
       </div>
       <div id="pricebook-list"></div>
     </section>
@@ -173,7 +173,9 @@
       </div>
       <div class="search-bar">
         <input id="pantry-search" type="search" placeholder="Search pantry…" oninput="Pantry.filter()" />
+        <button class="search-clear" onclick="document.getElementById('pantry-search').value='';Pantry.filter()" title="Clear">×</button>
       </div>
+      <button class="btn-secondary" style="margin-bottom:8px;width:100%" onclick="App.pushView('pricebook','Price Book'); PriceBook.render()">📋 Price Book →</button>
       <div id="pantry-list"></div>
       <button class="pantry-add-btn" onclick="Pantry.openAddForm()">＋ Add item</button>
     </section>
@@ -203,9 +205,9 @@
       <span class="nav-icon">🛒</span>
       <span class="nav-label">Shop</span>
     </button>
-    <button class="nav-btn" data-view="import" onclick="App.nav('import',this)">
-      <span class="nav-icon">🔍</span>
-      <span class="nav-label">Import</span>
+    <button class="nav-btn" data-view="pantry" onclick="App.nav('pantry',this)">
+      <span class="nav-icon">🧺</span>
+      <span class="nav-label">Pantry</span>
     </button>
     <button class="nav-btn" data-view="settings" onclick="App.nav('settings',this)">
       <span class="nav-icon">⚙️</span>
