@@ -565,12 +565,12 @@ const Shopping = (() => {
       }
     });
 
-    // 2. Update pantry for bought items (preserve gramEquiv to avoid unit-conversion data loss)
+    // 2. Update pantry for bought items (add as new batch for FIFO tracking)
     bought.forEach(item => {
       const purchaseQty = _confirmQtyOverrides[item._origIdx] ?? item.qty;
       if (purchaseQty) {
         const existing = Data.getPantryItem(item.name);
-        Data.setPantryItem(item.name, { qty: purchaseQty, unit: item.unit || 'item', gramEquiv: existing?.gramEquiv });
+        Data.addPantryBatch(item.name, purchaseQty, item.unit || 'item', { gramEquiv: existing?.gramEquiv });
       }
     });
 

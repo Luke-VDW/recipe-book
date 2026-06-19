@@ -49,6 +49,7 @@ const Pantry = (() => {
               <span class="pantry-card-name">${_esc(item.ingredient)}</span>
               <span class="pantry-card-qty">${_fmtQty(item.qty)} ${_esc(item.unit)}</span>
               ${perishableHtml}
+              ${_fmtBatches(item)}
             </div>
             <div class="pantry-card-actions">
               <button class="btn-mini" onclick="Pantry.openEditForm(${realIdx})">Edit</button>
@@ -184,6 +185,29 @@ const Pantry = (() => {
     const n = parseFloat(q);
     if (isNaN(n)) return '0';
     return n % 1 === 0 ? String(n) : n.toFixed(2).replace(/\.?0+$/, '');
+  }
+
+  function _fmtBatchDate(dateStr) {
+    if (!dateStr) return 'undated';
+    const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return dateStr;
+    const now = new Date();
+    const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    const dayStr = d.getDate() + ' ' + months[d.getMonth()];
+    return d.getFullYear() !== now.getFullYear() ? dayStr + ' ' + d.getFullYear() : dayStr;
+  }
+
+  function _fmtBatches(item) {
+    const batches = (item.batches || []).filter(b => (parseFloat(b.qty) || 0) > 0);
+    if (batches.length === 0) return '';
+    const fifo = Data.getFIFO();
+    const sorted = [...batches].sort((a, b) => (a.date || '') < (b.date || '') ? -1 : 1);
+    const rows = sorted.map(b =>
+      `<div class="pantry-batch-row">${_fmtQty(b.qty)} ${_esc(item.unit)} · ${_fmtBatchDate(b.date)}</div>`
+    ).join('');
+    const badge = (batches.length > 1 && fifo)
+      ? `<span class="pantry-fifo-badge">FIFO</span>` : '';
+    return `<div class="pantry-batch-list">${rows}${badge}</div>`;
   }
 
   function _esc(s) {
