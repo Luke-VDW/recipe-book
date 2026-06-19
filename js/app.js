@@ -129,6 +129,16 @@ const App = (() => {
     // Render default view
     Recipes.render();
 
+    // Close FAB menu on outside click
+    document.addEventListener('click', e => {
+      const menu = document.getElementById('fab-menu');
+      const fab = document.querySelector('.fab');
+      if (menu && !menu.classList.contains('hidden') &&
+          !menu.contains(e.target) && e.target !== fab) {
+        menu.classList.add('hidden');
+      }
+    });
+
     // Handle browser back
     window.addEventListener('popstate', () => {
       if (_viewStack.length > 1) {
@@ -150,6 +160,7 @@ const App = (() => {
   }
 
   function nav(viewName, btnEl) {
+    closeFabMenu();
     // Update nav buttons
     document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
     if (btnEl) btnEl.classList.add('active');
@@ -167,12 +178,14 @@ const App = (() => {
     if (viewName === 'shopping') Shopping.render();
     if (viewName === 'settings') { Settings.init(); _checkImportKey(); }
     if (viewName === 'recipes')  Recipes.render();
+    if (viewName === 'pantry')   Pantry.render();
+    if (viewName === 'import')   _checkImportKey();
 
     // Topbar
     const titles = {
       recipes:'📖 Recipe Book', planner:'🗓 Meal Planner',
       shopping:'🛒 Shopping List', import:'🔍 Import Recipe',
-      settings:'⚙️ Settings', detail:'',
+      settings:'⚙️ Settings', detail:'', pantry:'🧺 Pantry',
     };
     document.getElementById('topbar-title').textContent = titles[viewName] || '📖 Recipe Book';
     document.getElementById('btn-back').classList.add('hidden');
@@ -203,7 +216,8 @@ const App = (() => {
         document.getElementById('btn-back').classList.add('hidden');
         const titles = {
           recipes:'📖 Recipe Book', planner:'🗓 Meal Planner',
-          shopping:'🛒 Shopping List', import:'🔍 Import Recipe', settings:'⚙️ Settings',
+          shopping:'🛒 Shopping List', import:'🔍 Import Recipe',
+          settings:'⚙️ Settings', pantry:'🧺 Pantry',
         };
         document.getElementById('topbar-title').textContent = titles[prev] || '📖 Recipe Book';
       }
@@ -246,7 +260,18 @@ const App = (() => {
     _toastTimeout = setTimeout(() => { el.style.opacity = '0'; }, 3000);
   }
 
-  return { init, nav, pushView, goBack, closeModal, refresh, toast };
+  function toggleFabMenu() {
+    const menu = document.getElementById('fab-menu');
+    if (!menu) return;
+    menu.classList.toggle('hidden');
+  }
+
+  function closeFabMenu() {
+    const menu = document.getElementById('fab-menu');
+    if (menu) menu.classList.add('hidden');
+  }
+
+  return { init, nav, pushView, goBack, closeModal, refresh, toast, toggleFabMenu, closeFabMenu };
 })();
 
 // ── Boot ──────────────────────────────
