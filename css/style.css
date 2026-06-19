@@ -1027,3 +1027,37 @@ body {
 }
 .search-clear:hover { color: var(--dk-green); }
 .search-bar input[type="search"], .search-bar input[type="text"] { padding-right: 30px; }
+
+/* ── Shopping: recipe filter chips (Sub-project E) ── */
+.shop-recipe-filter {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  padding: 0 0 10px;
+  margin-bottom: 4px;
+  scrollbar-width: none;
+}
+.shop-recipe-filter::-webkit-scrollbar { display: none; }
+.shop-recipe-chip {
+  flex-shrink: 0;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  border-radius: 20px;
+  padding: 4px 12px;
+  font-size: 0.82rem;
+  cursor: pointer;
+  white-space: nowrap;
+  color: inherit;
+}
+.shop-recipe-chip.active {
+  background: var(--dk-green);
+  color: #fff;
+  border-color: var(--dk-green);
+}
+
+/* ── Shopping: pantry stock hint (Sub-project E) ── */
+.shop-pantry-stock-hint {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  margin-left: 6px;
+}

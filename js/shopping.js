@@ -66,6 +66,26 @@ const Shopping = (() => {
     return (s || '').replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
   }
 
+  let _recipeFilter = null;
+
+  function setRecipeFilter(name) {
+    _recipeFilter = name || null;
+    render();
+  }
+
+  function _buildRecipeFilterBar(items) {
+    const names = new Set();
+    items.forEach(item => {
+      (item.sources || []).forEach(s => { if (s.recipe) names.add(s.recipe); });
+    });
+    if (names.size < 2) return '';
+    const chips = ['All', ...names].map(name => {
+      const active = (name === 'All' ? !_recipeFilter : _recipeFilter === name) ? ' active' : '';
+      return `<button class="shop-recipe-chip${active}" onclick="Shopping.setRecipeFilter(${name === 'All' ? 'null' : JSON.stringify(name)})">${_esc(name)}</button>`;
+    }).join('');
+    return `<div class="shop-recipe-filter">${chips}</div>`;
+  }
+
   function _renderPriceDisplay(idx, item) {
     const card = Data.lookupPriceEntry(item.name);
     if (!card || !card.prices || card.prices.length === 0) {
@@ -153,9 +173,14 @@ const Shopping = (() => {
         </div>`;
     }
 
-    const usePantryBtn = (!item.checked && _hasPantryStock(item))
-      ? `<div class="shop-pantry-row"><button class="shop-use-pantry-btn" onclick="Shopping.markPantryUsed(${item._idx})">Use pantry ●</button></div>`
-      : '';
+    let usePantryBtn = '';
+    if (!item.checked && !item.pantryUsed) {
+      const p = Data.getPantryItem(item.name);
+      if (p && p.qty > 0) {
+        const hintHtml = `<span class="shop-pantry-stock-hint">· ${_fmtPantryQty(p.qty)} ${_esc(p.unit)} in pantry</span>`;
+        usePantryBtn = `<div class="shop-pantry-row"><button class="shop-use-pantry-btn" onclick="Shopping.markPantryUsed(${item._idx})">Use pantry ●</button>${hintHtml}</div>`;
+      }
+    }
 
     const actualInput = `<input type="number" class="shop-actual-input" id="shop-actual-${item._idx}"
       step="0.01" min="0"
@@ -273,17 +298,27 @@ const Shopping = (() => {
       return;
     }
 
+    const filterBar = _buildRecipeFilterBar(items);
+
+    const visibleItems = !_recipeFilter
+      ? items
+      : items.filter(item => {
+          if (!item.sources || item.sources.length === 0) return true;
+          return item.sources.some(s => s.recipe === _recipeFilter);
+        });
+
     const groups = {};
-    items.forEach((item, idx) => {
+    visibleItems.forEach(item => {
+      const origIdx = items.indexOf(item);
       const cat = guessCategory(item.name);
       if (!groups[cat]) groups[cat] = [];
-      groups[cat].push({ ...item, _idx: idx });
+      groups[cat].push({ ...item, _idx: origIdx });
     });
 
     const catOrder = ['produce','meat','dairy','spices & herbs','pasta & grains','pantry','frozen','drinks','other'];
     const orderedCats = catOrder.filter(c => groups[c]);
 
-    el.innerHTML = orderedCats.map(cat => {
+    el.innerHTML = filterBar + orderedCats.map(cat => {
       const rows = groups[cat].map(item => _renderItem(item)).join('');
       return `
         <div class="shop-category">
@@ -546,5 +581,5 @@ const Shopping = (() => {
     App.toast('Checked items removed');
   }
 
-  return { render, toggle, toggleSources, clearChecked, editPrice, savePrice, markPantryUsed, setActualPrice, openAddAdHocItem, _adhocAutocomplete, _adhocSelect, saveAdHocItem, openConfirmShop, confirmShop };
+  return { render, toggle, toggleSources, clearChecked, editPrice, savePrice, markPantryUsed, setActualPrice, openAddAdHocItem, _adhocAutocomplete, _adhocSelect, saveAdHocItem, openConfirmShop, confirmShop, setRecipeFilter };
 })();
