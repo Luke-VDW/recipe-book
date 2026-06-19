@@ -102,8 +102,10 @@
     <!-- IMPORT -->
     <section id="view-import" class="view">
       <div class="search-bar">
-        <input id="import-search" type="search" placeholder="Search Spoonacular…" />
-        <button class="search-clear" onclick="document.getElementById('import-search').value=''" title="Clear">×</button>
+        <div style="position:relative;flex:1;min-width:0">
+          <input id="import-search" type="search" placeholder="Search Spoonacular…" style="width:100%" />
+          <button class="search-clear" onclick="document.getElementById('import-search').value=''" title="Clear">×</button>
+        </div>
         <button class="btn-primary" onclick="Importer.search()">Search</button>
       </div>
       <div id="import-key-notice" class="notice hidden">
