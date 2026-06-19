@@ -1073,3 +1073,25 @@ body {
 }
 .confirm-item-qty-wrap { display: inline-flex; align-items: center; gap: 4px; }
 .confirm-item-unit { font-size: 0.85rem; color: var(--text-muted); }
+
+/* ── Pantry: batch list (Sub-project F) ── */
+.pantry-batch-list {
+  margin-top: 4px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px 8px;
+  align-items: center;
+}
+.pantry-batch-row {
+  font-size: 0.76rem;
+  color: var(--text-muted);
+}
+.pantry-fifo-badge {
+  font-size: 0.65rem;
+  font-weight: 700;
+  background: var(--lt-green);
+  color: var(--dk-green);
+  padding: 1px 5px;
+  border-radius: 4px;
+  letter-spacing: .04em;
+}

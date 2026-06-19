@@ -8,6 +8,8 @@ const Settings = (() => {
     const key = localStorage.getItem('rb_spoon_key') || '';
     const inp = document.getElementById('spoon-key-input');
     if (inp && key) inp.value = key;
+    const fifoCb = document.getElementById('settings-fifo-toggle');
+    if (fifoCb) fifoCb.checked = Data.getFIFO();
     const quota = localStorage.getItem('rb_spoon_quota');
     const quotaEl = document.getElementById('spoon-quota-display');
     if (quotaEl) quotaEl.textContent = quota ? `API quota remaining today: ${quota} points` : '';
@@ -33,7 +35,12 @@ const Settings = (() => {
     }
   }
 
-  return { init, saveSpoonKey, updateDriveStatus };
+  function setFIFO(enabled) {
+    Data.setFIFO(enabled);
+    App.toast(enabled ? 'FIFO deduction on ✓' : 'FIFO deduction off');
+  }
+
+  return { init, saveSpoonKey, updateDriveStatus, setFIFO };
 })();
 
 // ── Timer ─────────────────────────────

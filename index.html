@@ -132,6 +132,14 @@
       </div>
 
       <div class="settings-group">
+        <h3>Pantry FIFO</h3>
+        <p class="hint">When cooking, deduct stock from the oldest batch first.</p>
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
+          <input type="checkbox" id="settings-fifo-toggle" onchange="Settings.setFIFO(this.checked)" />
+          Use FIFO deduction (oldest batch first)
+        </label>
+      </div>
+      <div class="settings-group">
         <h3>Spend Analytics</h3>
         <p class="hint">Track your grocery spend over time with weekly and monthly breakdowns.</p>
         <button class="btn-secondary" onclick="App.pushView('analytics','Spend Analytics'); Analytics.render()">View Analytics →</button>

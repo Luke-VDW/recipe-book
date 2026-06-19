@@ -243,10 +243,18 @@ const Recipes = (() => {
     if (pBase < dBase && ingIdx !== null) {
       const actualInput = document.getElementById('cook-actual-' + ingIdx);
       const actualUsed = actualInput ? (parseFloat(actualInput.value) || 0) : p.qty;
-      Data.setPantryItem(name, { qty: Math.max(0, p.qty - actualUsed), unit: p.unit, gramEquiv: p.gramEquiv });
+      if (Data.getFIFO()) {
+        Data.deductPantryFIFO(name, actualUsed, p.unit);
+      } else {
+        Data.setPantryItem(name, { qty: Math.max(0, p.qty - actualUsed), unit: p.unit, gramEquiv: p.gramEquiv });
+      }
     } else {
       const remain = _convertFromBase(Math.max(0, pBase - dBase), pBaseUnit, p.unit);
-      Data.setPantryItem(name, { qty: remain.qty, unit: remain.unit, gramEquiv: p.gramEquiv });
+      if (Data.getFIFO()) {
+        Data.deductPantryFIFO(name, scaledQty, unit);
+      } else {
+        Data.setPantryItem(name, { qty: remain.qty, unit: remain.unit, gramEquiv: p.gramEquiv });
+      }
     }
   }
 
