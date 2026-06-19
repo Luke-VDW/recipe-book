@@ -23,6 +23,8 @@ const Recipes = (() => {
   const ING_UNITS = ['g','100g','kg','ml','100ml','l','item','tsp','tbsp','clove','bunch','head','can','jar','bottle','bag','packet','loaf','dozen'];
 
   let _ingCount = 0;
+  let _stepCount = 0;
+  let _draggedStepId = null;
 
   function parseIngredients(text) {
     if (!text) return [];
@@ -59,6 +61,62 @@ const Recipes = (() => {
       cans:'can', jars:'jar', bottles:'bottle', bags:'bag', packets:'packet',
     };
     return map[u.toLowerCase()] || u.toLowerCase();
+  }
+
+  function _stepRowHtml(n, text) {
+    return `<div class="step-row" id="step-row-${n}" draggable="true"
+        ondragstart="Recipes._stepDragStart(event,${n})"
+        ondragover="Recipes._stepDragOver(event)"
+        ondrop="Recipes._stepDrop(event,${n})">
+      <span class="step-drag-handle" title="Drag to reorder">⠿</span>
+      <input type="text" id="step-text-${n}" class="step-text-input"
+        value="${_esc(text || '')}" placeholder="Describe this step…" />
+      <button type="button" class="btn-row-remove" onclick="Recipes._removeStepRow(${n})">✕</button>
+    </div>`;
+  }
+
+  function _renderStepRows(methodStr) {
+    _stepCount = 0;
+    const steps = (methodStr || '').split('\n')
+      .map(s => s.replace(/^\d+\.\s*/, '').trim())
+      .filter(Boolean);
+    if (steps.length === 0) {
+      _addStepRow('');
+    } else {
+      steps.forEach(s => _addStepRow(s));
+    }
+  }
+
+  function _addStepRow(text) {
+    const list = document.getElementById('rf-step-list');
+    if (!list) return;
+    const n = _stepCount++;
+    list.insertAdjacentHTML('beforeend', _stepRowHtml(n, text || ''));
+  }
+
+  function _removeStepRow(n) {
+    const row = document.getElementById('step-row-' + n);
+    if (row) row.remove();
+  }
+
+  function _stepDragStart(e, n) {
+    _draggedStepId = n;
+    e.dataTransfer.effectAllowed = 'move';
+  }
+
+  function _stepDragOver(e) {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+  }
+
+  function _stepDrop(e, n) {
+    e.preventDefault();
+    if (_draggedStepId === null || _draggedStepId === n) return;
+    const dragged = document.getElementById('step-row-' + _draggedStepId);
+    const target  = document.getElementById('step-row-' + n);
+    if (!dragged || !target) return;
+    target.parentNode.insertBefore(dragged, target);
+    _draggedStepId = null;
   }
 
   function _ingRowHtml(n, qty, unit, name) {
@@ -523,8 +581,9 @@ const Recipes = (() => {
         <button type="button" class="btn-small" style="margin-top:4px" onclick="Recipes._addIngRow()">＋ Add ingredient</button>
       </div>
       <div class="form-group">
-        <label>Method (one step per line)</label>
-        <textarea id="rf-method" rows="5" placeholder="1. Heat pan…&#10;2. Add onion…">${r.method || ''}</textarea>
+        <label>Method</label>
+        <div id="rf-step-list"></div>
+        <button type="button" class="btn-small" style="margin-top:4px" onclick="Recipes._addStepRow()">＋ Add step</button>
       </div>
       <div class="form-group">
         <label>Tags (comma-separated)</label>
@@ -561,6 +620,7 @@ const Recipes = (() => {
       </div>
     `;
     _renderIngRows(r.ingredients);
+    _renderStepRows(r.method);
     document.getElementById('modal-overlay').classList.remove('hidden');
   }
 
@@ -591,7 +651,15 @@ const Recipes = (() => {
         });
         return parts.join('; ');
       })(),
-      method: document.getElementById('rf-method').value.trim(),
+      method: (() => {
+        const parts = [];
+        document.querySelectorAll('#rf-step-list .step-row').forEach(row => {
+          const n = row.id.replace('step-row-', '');
+          const text = (document.getElementById('step-text-' + n)?.value || '').trim();
+          if (text) parts.push(text);
+        });
+        return parts.join('\n');
+      })(),
       tags: document.getElementById('rf-tags').value.trim(),
       source: document.getElementById('rf-src').value.trim(),
       kcalTotal: isNaN(kcalRaw) ? null : kcalRaw,
@@ -706,5 +774,6 @@ const Recipes = (() => {
            parseIngredients, setServings, openAddToPlanModal, confirmAddToPlan,
            editCalories, cancelEditCalories, saveCalories, calculateCalories,
            openCookConfirm, _cookRefresh, _cookAddExtra, confirmCook,
-           _addIngRow, _removeIngRow };
+           _addIngRow, _removeIngRow,
+           _addStepRow, _removeStepRow, _stepDragStart, _stepDragOver, _stepDrop };
 })();
