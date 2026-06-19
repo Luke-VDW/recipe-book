@@ -981,3 +981,48 @@ body {
 /* Shared remove button */
 .btn-row-remove { background: none; border: none; cursor: pointer; color: var(--text-muted); font-size: 1rem; padding: 2px 6px; line-height: 1; flex-shrink: 0; }
 .btn-row-remove:hover { color: #c62828; }
+
+/* ── FAB menu (Sub-project G) ───────── */
+.fab-menu {
+  position: fixed;
+  bottom: calc(var(--nav-h) + 68px);
+  right: 16px;
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(0,0,0,.18);
+  overflow: hidden;
+  z-index: 200;
+  min-width: 180px;
+}
+.fab-menu-item {
+  display: block;
+  width: 100%;
+  padding: 13px 18px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  font-size: 0.95rem;
+  text-align: left;
+  color: inherit;
+  white-space: nowrap;
+}
+.fab-menu-item:hover { background: var(--lt-green); }
+.fab-menu-item + .fab-menu-item { border-top: 1px solid var(--border); }
+
+/* ── Search clear button (Sub-project G) ── */
+.search-bar { position: relative; }
+.search-clear {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--text-muted);
+  font-size: 1.1rem;
+  line-height: 1;
+  padding: 4px 6px;
+}
+.search-clear:hover { color: var(--dk-green); }
