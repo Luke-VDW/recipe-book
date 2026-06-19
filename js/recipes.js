@@ -20,6 +20,10 @@ const Recipes = (() => {
   ];
   const UNIT_RE = UNITS.join('|');
 
+  const ING_UNITS = ['g','100g','kg','ml','100ml','l','item','tsp','tbsp','clove','bunch','head','can','jar','bottle','bag','packet','loaf','dozen'];
+
+  let _ingCount = 0;
+
   function parseIngredients(text) {
     if (!text) return [];
     return text.split(';').map(raw => {
@@ -55,6 +59,42 @@ const Recipes = (() => {
       cans:'can', jars:'jar', bottles:'bottle', bags:'bag', packets:'packet',
     };
     return map[u.toLowerCase()] || u.toLowerCase();
+  }
+
+  function _ingRowHtml(n, qty, unit, name) {
+    const unitOpts = ING_UNITS.map(u =>
+      `<option value="${u}"${u === (unit || 'item') ? ' selected' : ''}>${u}</option>`
+    ).join('');
+    return `<div class="ing-row" id="ing-row-${n}">
+      <input type="number" id="ing-qty-${n}" class="ing-qty-input" min="0" step="0.01"
+        value="${qty != null && qty !== '' ? qty : ''}" placeholder="qty" />
+      <select id="ing-unit-${n}" class="ing-unit-select">${unitOpts}</select>
+      <input type="text" id="ing-name-${n}" class="ing-name-input"
+        value="${_esc(name || '')}" placeholder="ingredient name" />
+      <button type="button" class="btn-row-remove" onclick="Recipes._removeIngRow(${n})">✕</button>
+    </div>`;
+  }
+
+  function _renderIngRows(ingredientsStr) {
+    _ingCount = 0;
+    const ings = parseIngredients(ingredientsStr || '');
+    if (ings.length === 0) {
+      _addIngRow('', 'item', '');
+    } else {
+      ings.forEach(ing => _addIngRow(ing.qty, ing.unit, ing.name));
+    }
+  }
+
+  function _addIngRow(qty, unit, name) {
+    const list = document.getElementById('rf-ing-list');
+    if (!list) return;
+    const n = _ingCount++;
+    list.insertAdjacentHTML('beforeend', _ingRowHtml(n, qty, unit, name));
+  }
+
+  function _removeIngRow(n) {
+    const row = document.getElementById('ing-row-' + n);
+    if (row) row.remove();
   }
 
   function _esc(s) {
@@ -478,8 +518,9 @@ const Recipes = (() => {
         </div>
       </div>
       <div class="form-group">
-        <label>Ingredients (semicolon-separated)</label>
-        <textarea id="rf-ing" rows="4" placeholder="500g beef mince; 1 onion; 2 cloves garlic">${r.ingredients || ''}</textarea>
+        <label>Ingredients</label>
+        <div id="rf-ing-list"></div>
+        <button type="button" class="btn-small" style="margin-top:4px" onclick="Recipes._addIngRow()">＋ Add ingredient</button>
       </div>
       <div class="form-group">
         <label>Method (one step per line)</label>
@@ -519,6 +560,7 @@ const Recipes = (() => {
         </button>
       </div>
     `;
+    _renderIngRows(r.ingredients);
     document.getElementById('modal-overlay').classList.remove('hidden');
   }
 
@@ -533,7 +575,22 @@ const Recipes = (() => {
       servings: parseInt(document.getElementById('rf-srv').value) || 2,
       prepMins: parseInt(document.getElementById('rf-prep').value) || 0,
       cookMins: parseInt(document.getElementById('rf-cook').value) || 0,
-      ingredients: document.getElementById('rf-ing').value.trim(),
+      ingredients: (() => {
+        const parts = [];
+        document.querySelectorAll('#rf-ing-list .ing-row').forEach(row => {
+          const n = row.id.replace('ing-row-', '');
+          const ingName = (document.getElementById('ing-name-' + n)?.value || '').trim();
+          const ingQty  = (document.getElementById('ing-qty-' + n)?.value || '').trim();
+          const ingUnit = document.getElementById('ing-unit-' + n)?.value || '';
+          if (!ingName) return;
+          if (ingQty) {
+            parts.push(ingUnit ? `${ingQty} ${ingUnit} ${ingName}` : `${ingQty} ${ingName}`);
+          } else {
+            parts.push(ingName);
+          }
+        });
+        return parts.join('; ');
+      })(),
       method: document.getElementById('rf-method').value.trim(),
       tags: document.getElementById('rf-tags').value.trim(),
       source: document.getElementById('rf-src').value.trim(),
@@ -648,5 +705,6 @@ const Recipes = (() => {
   return { render, filter, openDetail, openAddModal, openEditModal, saveModal, confirmDelete,
            parseIngredients, setServings, openAddToPlanModal, confirmAddToPlan,
            editCalories, cancelEditCalories, saveCalories, calculateCalories,
-           openCookConfirm, _cookRefresh, _cookAddExtra, confirmCook };
+           openCookConfirm, _cookRefresh, _cookAddExtra, confirmCook,
+           _addIngRow, _removeIngRow };
 })();
