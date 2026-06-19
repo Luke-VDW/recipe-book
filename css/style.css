@@ -1061,3 +1061,15 @@ body {
   color: var(--text-muted);
   margin-left: 6px;
 }
+
+/* ── Confirm shop: purchase qty input (Sub-project E) ── */
+.confirm-item-qty-input {
+  width: 55px;
+  padding: 2px 4px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  font-size: 0.85rem;
+  text-align: center;
+}
+.confirm-item-qty-wrap { display: inline-flex; align-items: center; gap: 4px; }
+.confirm-item-unit { font-size: 0.85rem; color: var(--text-muted); }

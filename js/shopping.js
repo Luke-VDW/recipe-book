@@ -73,6 +73,13 @@ const Shopping = (() => {
     render();
   }
 
+  let _confirmQtyOverrides = {};
+
+  function _setConfirmQty(idx, value) {
+    const qty = parseFloat(value);
+    _confirmQtyOverrides[idx] = isNaN(qty) || qty < 0 ? null : qty;
+  }
+
   function _buildRecipeFilterBar(items) {
     const names = new Set();
     items.forEach(item => {
@@ -450,9 +457,10 @@ const Shopping = (() => {
   }
 
   function openConfirmShop() {
+    _confirmQtyOverrides = {};
     const items = Data.getShoppingList();
-    const bought = items.filter(i => i.checked);
-    const pantryItems = items.filter(i => i.pantryUsed);
+    const bought = items.map((item, idx) => ({ ...item, _origIdx: idx })).filter(i => i.checked);
+    const pantryItems = items.map((item, idx) => ({ ...item, _origIdx: idx })).filter(i => i.pantryUsed);
 
     if (bought.length === 0 && pantryItems.length === 0) {
       App.toast('Nothing confirmed yet — tick items as bought or mark as pantry use', 'warn');
@@ -470,9 +478,14 @@ const Shopping = (() => {
       } else {
         costHtml = `<span class="confirm-item-cost"><span class="shop-est-badge">~est</span> —</span>`;
       }
+      const qtyInput = `<span class="confirm-item-qty-wrap"><input type="number" class="confirm-item-qty-input"
+        id="confirm-qty-${item._origIdx}" step="0.01" min="0"
+        value="${fmtQty(item.qty) || ''}" placeholder="${fmtQty(item.qty) || ''}"
+        oninput="Shopping._setConfirmQty(${item._origIdx}, this.value)"
+        title="Actual qty purchased" /><span class="confirm-item-unit">${_esc(item.unit || '')}</span></span>`;
       return `<div class="confirm-item-row">
       <span class="confirm-item-name">${_esc(item.name)}</span>
-      <span class="confirm-item-qty">${fmtQty(item.qty) || ''} ${_esc(item.unit || '')}</span>
+      ${qtyInput}
       ${costHtml}
     </div>`;
     }).join('');
@@ -523,8 +536,8 @@ const Shopping = (() => {
 
   function confirmShop() {
     const items = Data.getShoppingList();
-    const bought = items.filter(i => i.checked);
-    const pantryItems = items.filter(i => i.pantryUsed);
+    const bought = items.map((item, idx) => ({ ...item, _origIdx: idx })).filter(i => i.checked);
+    const pantryItems = items.map((item, idx) => ({ ...item, _origIdx: idx })).filter(i => i.pantryUsed);
     const retailer = (document.getElementById('confirm-retailer')?.value || '').trim();
     const includeEst = document.getElementById('confirm-include-est')?.checked || false;
     const overrideRaw = parseFloat(document.getElementById('confirm-total-override')?.value);
@@ -542,10 +555,11 @@ const Shopping = (() => {
 
     // 1. Update price book for bought items with actualPrice
     bought.forEach(item => {
-      if (item.actualPrice != null && item.qty) {
+      const purchaseQty = _confirmQtyOverrides[item._origIdx] ?? item.qty;
+      if (item.actualPrice != null && purchaseQty) {
         Data.setPriceEntry(item.name.toLowerCase().trim(), {
           unit: item.unit || 'item',
-          pricePerUnit: item.actualPrice / item.qty,
+          pricePerUnit: item.actualPrice / purchaseQty,
           retailer,
         });
       }
@@ -553,7 +567,8 @@ const Shopping = (() => {
 
     // 2. Update pantry for bought items
     bought.forEach(item => {
-      if (item.qty) Data.setPantryItem(item.name, { qty: item.qty, unit: item.unit || 'item' });
+      const purchaseQty = _confirmQtyOverrides[item._origIdx] ?? item.qty;
+      if (purchaseQty) Data.setPantryItem(item.name, { qty: purchaseQty, unit: item.unit || 'item' });
     });
 
     // 3. Log spend
@@ -581,5 +596,5 @@ const Shopping = (() => {
     App.toast('Checked items removed');
   }
 
-  return { render, toggle, toggleSources, clearChecked, editPrice, savePrice, markPantryUsed, setActualPrice, openAddAdHocItem, _adhocAutocomplete, _adhocSelect, saveAdHocItem, openConfirmShop, confirmShop, setRecipeFilter };
+  return { render, toggle, toggleSources, clearChecked, editPrice, savePrice, markPantryUsed, setActualPrice, openAddAdHocItem, _adhocAutocomplete, _adhocSelect, saveAdHocItem, openConfirmShop, confirmShop, setRecipeFilter, _setConfirmQty };
 })();
