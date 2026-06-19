@@ -16,6 +16,7 @@ const Recipes = (() => {
     'lbs','lb','oz',
     'cloves','clove','pinch','pinches',
     'pieces','piece','slices','slice',
+    'cans','can','jars','jar','bottles','bottle','bags','bag','packets','packet',
   ];
   const UNIT_RE = UNITS.join('|');
 
@@ -51,6 +52,7 @@ const Recipes = (() => {
       teaspoons:'tsp', teaspoon:'tsp', tsps:'tsp',
       cups:'cup', cloves:'clove', pieces:'piece',
       slices:'slice', pinches:'pinch', lbs:'lb',
+      cans:'can', jars:'jar', bottles:'bottle', bags:'bag', packets:'packet',
     };
     return map[u.toLowerCase()] || u.toLowerCase();
   }
