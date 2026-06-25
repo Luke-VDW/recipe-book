@@ -165,6 +165,15 @@ const Planner = (() => {
 
   function showTab(tab) {
     _currentTab = tab;
+    // Update search placeholder and clear results when switching tabs
+    const filterInput = document.getElementById('planner-recipe-filter');
+    if (filterInput) {
+      filterInput.placeholder = tab === 'treats' ? 'Search recipes to add…' : 'Filter recipes…';
+      filterInput.value = '';
+    }
+    _recipeFilter = '';
+    const resultsEl = document.getElementById('treat-search-results');
+    if (resultsEl) { resultsEl.innerHTML = ''; resultsEl.classList.add('hidden'); }
     render();
   }
 
@@ -189,11 +198,9 @@ const Planner = (() => {
     const wk     = plan['week' + _currentWeek] || {};
     const treats = wk.treats || [];
 
-    const filterLower = _recipeFilter.toLowerCase();
     const rows = treats.map((t, i) => {
       const r = Data.getRecipeById(t.recipeId);
       if (!r) return '';
-      if (filterLower && !r.name.toLowerCase().includes(filterLower)) return '';
       const treatKcal = r.kcalTotal != null
         ? (r.kcalTotal * t.batches) + ' kcal'
         : '— kcal';
@@ -319,9 +326,65 @@ const Planner = (() => {
   function filterRecipes() {
     clearTimeout(_filterTimer);
     _filterTimer = setTimeout(() => {
-      _recipeFilter = (document.getElementById('planner-recipe-filter')?.value || '').trim();
-      render();
-    }, 250);
+      const query = (document.getElementById('planner-recipe-filter')?.value || '').trim();
+      if (_currentTab === 'treats') {
+        _renderTreatSearchResults(query);
+      } else {
+        _recipeFilter = query;
+        render();
+      }
+    }, 200);
+  }
+
+  function _esc(s) {
+    return (s || '').replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  }
+
+  function _renderTreatSearchResults(query) {
+    const resultsEl = document.getElementById('treat-search-results');
+    if (!resultsEl) return;
+    if (!query) {
+      resultsEl.innerHTML = '';
+      resultsEl.classList.add('hidden');
+      return;
+    }
+    const lower = query.toLowerCase();
+    const matches = Data.getRecipes()
+      .filter(r => r.name.toLowerCase().includes(lower))
+      .slice(0, 8);
+    if (matches.length === 0) {
+      resultsEl.innerHTML = `<div class="treat-search-empty">No recipes match "${_esc(query)}"</div>`;
+      resultsEl.classList.remove('hidden');
+      return;
+    }
+    resultsEl.innerHTML = matches.map(r =>
+      `<div class="treat-search-result" onclick="Planner.addTreatDirect('${_esc(r.id)}')">
+        <span class="treat-search-name">${_esc(r.name)}</span>
+        ${r.category ? `<span class="treat-search-cat">${_esc(r.category)}</span>` : ''}
+      </div>`
+    ).join('');
+    resultsEl.classList.remove('hidden');
+  }
+
+  function addTreatDirect(recipeId) {
+    const plan   = Data.getPlan();
+    const wk     = plan['week' + _currentWeek] || {};
+    const treats = [...(wk.treats || [])];
+    const existing = treats.findIndex(t => t.recipeId === recipeId);
+    if (existing >= 0) {
+      treats[existing] = { ...treats[existing], batches: (treats[existing].batches || 1) + 1 };
+    } else {
+      treats.push({ recipeId, batches: 1 });
+    }
+    Data.setTreats(_currentWeek, treats);
+    // Clear search
+    const filterInput = document.getElementById('planner-recipe-filter');
+    if (filterInput) filterInput.value = '';
+    const resultsEl = document.getElementById('treat-search-results');
+    if (resultsEl) { resultsEl.innerHTML = ''; resultsEl.classList.add('hidden'); }
+    render();
+    const r = Data.getRecipeById(recipeId);
+    App.toast((r ? r.name : 'Treat') + ' added ✓');
   }
 
   function setSlot(week, day, meal, recipeId) {
@@ -457,5 +520,5 @@ const Planner = (() => {
   }
 
   return { render, showWeek, showTab, setSlot, generateShoppingList, filterRecipes,
-           openAddTreatModal, confirmAddTreat, removeTreat, updateTreatBatches };
+           openAddTreatModal, confirmAddTreat, removeTreat, updateTreatBatches, addTreatDirect };
 })();

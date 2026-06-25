@@ -350,13 +350,30 @@ body {
 .meal-slot select:focus { border-color: var(--md-green); }
 .slot-kcal { font-size: 0.72rem; color: var(--text-muted); }
 .planner-actions { margin-top: 14px; display: flex; gap: 8px; }
-.planner-filter-bar { margin: 8px 0 10px; }
+.planner-filter-bar { margin: 8px 0 10px; position: relative; }
 .planner-filter-bar input {
   width: 100%; padding: 8px 12px;
   border: 1.5px solid var(--border); border-radius: var(--radius);
   font-size: .9rem; background: var(--surface);
 }
 .planner-filter-bar input:focus { border-color: var(--md-green); outline: none; }
+
+/* Treat search results dropdown */
+.treat-search-results {
+  position: absolute; top: 100%; left: 0; right: 0; z-index: 100;
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 0 0 var(--radius) var(--radius);
+  box-shadow: 0 6px 18px rgba(0,0,0,.12); max-height: 260px; overflow-y: auto;
+}
+.treat-search-result {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 10px 14px; cursor: pointer; gap: 8px;
+}
+.treat-search-result:hover { background: var(--lt-green); }
+.treat-search-result + .treat-search-result { border-top: 1px solid var(--border); }
+.treat-search-name { font-weight: 600; font-size: 0.9rem; text-transform: capitalize; flex: 1; min-width: 0; }
+.treat-search-cat { font-size: 0.75rem; color: var(--text-muted); background: var(--lt-green); padding: 2px 7px; border-radius: 10px; flex-shrink: 0; }
+.treat-search-empty { padding: 12px 14px; font-size: 0.88rem; color: var(--text-muted); font-style: italic; }
 
 /* ── SHOPPING LIST ── */
 .section-header {
