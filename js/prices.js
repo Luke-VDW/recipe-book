@@ -1,5 +1,5 @@
 /* ══════════════════════════════════════
-   prices.js — Price Book management view
+   prices.js — Ingredient Book view
    ══════════════════════════════════════ */
 
 const PriceBook = (() => {
@@ -50,8 +50,8 @@ const PriceBook = (() => {
     if (_showOrphansOnly) filtered = filtered.filter(e => isOrphaned(e.ingredient));
 
     if (filtered.length === 0) {
-      el.innerHTML = `<div class="empty-state"><span class="emoji">💰</span>${
-        filterLower || _showOrphansOnly ? 'No matches.' : 'No prices yet. Tap ＋ Add to get started.'
+      el.innerHTML = `<div class="empty-state"><span class="emoji">📋</span>${
+        filterLower || _showOrphansOnly ? 'No matches.' : 'No ingredients yet. Tap ＋ Add to get started.'
       }</div>
       <button class="pb-add-ingredient-btn" onclick="PriceBook.openAddIngredientForm()">＋ Add ingredient</button>`;
       return;
@@ -117,8 +117,8 @@ const PriceBook = (() => {
       </div>
       <div class="form-row">
         <div class="form-group">
-          <label>Price (R)</label>
-          <input id="pb-form-price" type="number" step="0.01" min="0" placeholder="0.00" />
+          <label>Price R (optional)</label>
+          <input id="pb-form-price" type="number" step="0.01" min="0" placeholder="leave blank" />
         </div>
         <div class="form-group">
           <label>Per</label>
@@ -138,12 +138,17 @@ const PriceBook = (() => {
 
   function saveNewIngredient() {
     const ingredient = (document.getElementById('pb-form-ing')?.value || '').trim().toLowerCase();
-    const price = parseFloat(document.getElementById('pb-form-price')?.value);
+    const priceRaw = document.getElementById('pb-form-price')?.value;
+    const price = priceRaw !== '' ? parseFloat(priceRaw) : null;
     const unit = document.getElementById('pb-form-unit')?.value || 'item';
     const retailer = (document.getElementById('pb-form-retailer')?.value || '').trim();
     if (!ingredient) { App.toast('Enter an ingredient name', 'warn'); return; }
-    if (isNaN(price) || price < 0) { App.toast('Enter a valid price', 'warn'); return; }
-    Data.setPriceEntry(ingredient, { unit, pricePerUnit: price, retailer });
+    if (price !== null && (isNaN(price) || price < 0)) { App.toast('Enter a valid price', 'warn'); return; }
+    if (price !== null) {
+      Data.setPriceEntry(ingredient, { unit, pricePerUnit: price, retailer });
+    } else {
+      Data.addIngredientEntry(ingredient);
+    }
     App.closeModal();
     render();
     App.toast('Ingredient added ✓');

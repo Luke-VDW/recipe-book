@@ -355,8 +355,19 @@ const Data = (() => {
     const card = _db.priceBook[cardIdx];
     if (priceIdx < 0 || priceIdx >= card.prices.length) return;
     card.prices.splice(priceIdx, 1);
-    if (card.prices.length === 0) _db.priceBook.splice(cardIdx, 1);
+    // Keep the ingredient entry even if it has no prices — they can be added later
     save();
+  }
+
+  function addIngredientEntry(name) {
+    if (!name) return;
+    if (!_db.priceBook) _db.priceBook = [];
+    const lower = name.toLowerCase().trim();
+    const exists = _db.priceBook.some(c => c.ingredient.toLowerCase() === lower);
+    if (!exists) {
+      _db.priceBook.push({ ingredient: lower, prices: [] });
+      save();
+    }
   }
 
   function removeIngredient(ingredientIdx) {
@@ -734,7 +745,7 @@ const Data = (() => {
     isDriveConnected, connectDrive, disconnectDrive, syncDrive,
     exportJSON, importJSON, handleImportFile, clearAll,
     loadStarterData, loadStarterPrices, getClientId, setClientId,
-    getPriceBook, setPriceEntry, removePriceEntry, removeIngredient,
+    getPriceBook, setPriceEntry, removePriceEntry, addIngredientEntry, removeIngredient,
     lookupPriceEntry, lookupPrice, ensurePriceBookEntries,
     setPantryItem, addPantryBatch, deductPantryFIFO, getFIFO, setFIFO,
     removePantryItem, clearPantryPerishables, getPantryItem,

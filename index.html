@@ -157,10 +157,10 @@
       </div>
     </section>
 
-    <!-- PRICE BOOK -->
+    <!-- INGREDIENT BOOK -->
     <section id="view-pricebook" class="view">
       <div class="section-header">
-        <h2>Price Book</h2>
+        <h2>Ingredient Book</h2>
         <div class="section-header-actions">
           <button class="btn-small" id="pb-orphan-toggle" onclick="PriceBook.toggleOrphans()">Orphans only</button>
           <button class="btn-small" onclick="PriceBook.openAddIngredientForm()">＋ Add</button>
@@ -186,7 +186,7 @@
         <input id="pantry-search" type="search" placeholder="Search pantry…" oninput="Pantry.filter()" />
         <button class="search-clear" onclick="document.getElementById('pantry-search').value='';Pantry.filter()" title="Clear">×</button>
       </div>
-      <button class="btn-secondary" style="margin-bottom:8px;width:100%" onclick="App.pushView('pricebook','Price Book'); PriceBook.render()">📋 Price Book →</button>
+      <button class="btn-secondary" style="margin-bottom:8px;width:100%" onclick="App.pushView('pricebook','Ingredient Book'); PriceBook.render()">📋 Ingredient Book →</button>
       <div id="pantry-list"></div>
       <button class="pantry-add-btn" onclick="Pantry.openAddForm()">＋ Add item</button>
     </section>
