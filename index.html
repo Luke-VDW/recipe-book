@@ -141,6 +141,11 @@
         </label>
       </div>
       <div class="settings-group">
+        <h3>Ingredient Book</h3>
+        <p class="hint">Pull all ingredients from your recipes into the Ingredient Book so you can track prices.</p>
+        <button class="btn-secondary" onclick="Data.syncAllRecipeIngredients()">📋 Sync ingredients from recipes</button>
+      </div>
+      <div class="settings-group">
         <h3>Spend Analytics</h3>
         <p class="hint">Track your grocery spend over time with weekly and monthly breakdowns.</p>
         <button class="btn-secondary" onclick="App.pushView('analytics','Spend Analytics'); Analytics.render()">View Analytics →</button>

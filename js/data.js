@@ -359,6 +359,24 @@ const Data = (() => {
     save();
   }
 
+  function syncAllRecipeIngredients() {
+    if (typeof Recipes === 'undefined') { App.toast('Recipes module not loaded', 'warn'); return; }
+    let count = 0;
+    (_db.recipes || []).forEach(r => {
+      const parsed = Recipes.parseIngredients(r.ingredients);
+      parsed.forEach(ing => {
+        if (!ing.name) return;
+        const lower = ing.name.toLowerCase().trim();
+        if (!lower) return;
+        if (!_db.priceBook) _db.priceBook = [];
+        const exists = _db.priceBook.some(c => c.ingredient.toLowerCase() === lower);
+        if (!exists) { _db.priceBook.push({ ingredient: lower, prices: [] }); count++; }
+      });
+    });
+    save();
+    App.toast(count > 0 ? `Added ${count} new ingredient${count !== 1 ? 's' : ''} ✓` : 'All ingredients already in book');
+  }
+
   function addIngredientEntry(name) {
     if (!name) return;
     if (!_db.priceBook) _db.priceBook = [];
@@ -527,6 +545,13 @@ const Data = (() => {
       // Always apply the merged recipe list and combined deletion log
       _db.recipes = mergedRecipes;
       _db.deletedRecipeIds = [...deletedIds];
+
+      // Sync ingredients from all merged recipes into ingredient book
+      if (typeof Recipes !== 'undefined') {
+        mergedRecipes.forEach(r => {
+          ensurePriceBookEntries(Recipes.parseIngredients(r.ingredients));
+        });
+      }
 
       save();
       const changed = remoteNewer || mergedRecipes.length !== prevRecipeCount;
@@ -746,7 +771,7 @@ const Data = (() => {
     exportJSON, importJSON, handleImportFile, clearAll,
     loadStarterData, loadStarterPrices, getClientId, setClientId,
     getPriceBook, setPriceEntry, removePriceEntry, addIngredientEntry, removeIngredient,
-    lookupPriceEntry, lookupPrice, ensurePriceBookEntries,
+    lookupPriceEntry, lookupPrice, ensurePriceBookEntries, syncAllRecipeIngredients,
     setPantryItem, addPantryBatch, deductPantryFIFO, getFIFO, setFIFO,
     removePantryItem, clearPantryPerishables, getPantryItem,
     getSpendLog, logSpend, clearSpendLog, updateSpendEntry,
