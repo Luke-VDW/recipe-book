@@ -136,13 +136,19 @@ const App = (() => {
     // Render default view
     Recipes.render();
 
-    // Close FAB menu on outside click
+    // Close FAB menus on outside click
     document.addEventListener('click', e => {
       const menu = document.getElementById('fab-menu');
-      const fab = document.querySelector('.fab');
+      const fab = document.querySelector('.fab:not(.fab-left)');
       if (menu && !menu.classList.contains('hidden') &&
           !menu.contains(e.target) && e.target !== fab) {
         menu.classList.add('hidden');
+      }
+      const shopMenu = document.getElementById('shop-action-menu');
+      const shopFab = document.querySelector('.fab-left');
+      if (shopMenu && !shopMenu.classList.contains('hidden') &&
+          !shopMenu.contains(e.target) && e.target !== shopFab) {
+        shopMenu.classList.add('hidden');
       }
     });
 

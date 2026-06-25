@@ -193,6 +193,7 @@ body {
   z-index: 50;
 }
 .fab:active { transform: scale(.94); }
+.fab-left { right: auto; left: 16px; font-size: 1.2rem; }
 
 /* ── BUTTONS ── */
 .btn-primary, .btn-secondary, .btn-danger, .btn-small {
@@ -504,6 +505,8 @@ body {
   #bottom-nav    { left: 50%; right: auto; width: 480px; transform: translateX(-50%); }
   #main          { left: 50%; right: auto; width: 480px; transform: translateX(-50%); }
   .fab           { right: calc(50% - 240px + 16px); }
+  .fab-left      { left: calc(50% - 240px + 16px); right: auto; }
+  .fab-menu-left { left: calc(50% - 240px + 16px); }
 }
 
 /* ── RESPONSIVE: desktop — sidebar nav ── */
@@ -1007,6 +1010,19 @@ body {
   position: fixed;
   bottom: calc(var(--nav-h) + 68px);
   right: 16px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(0,0,0,.18);
+  overflow: hidden;
+  z-index: 200;
+  min-width: 180px;
+}
+.fab-menu-left {
+  position: fixed;
+  bottom: calc(var(--nav-h) + 68px);
+  left: 16px;
+  right: auto;
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 12px;

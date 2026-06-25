@@ -650,5 +650,29 @@ const Shopping = (() => {
     App.toast('Checked items removed');
   }
 
-  return { render, toggle, toggleSources, clearChecked, editPrice, savePrice, markPantryUsed, setActualPrice, openAddAdHocItem, _adhocAutocomplete, _adhocSelect, saveAdHocItem, openConfirmShop, confirmShop, setRecipeFilter, toggleRecipeFilter, _setConfirmQty, _setConfirmUnit, setActualQty, setActualUnit };
+  function toggleActionMenu() {
+    const menu = document.getElementById('shop-action-menu');
+    if (menu) menu.classList.toggle('hidden');
+  }
+
+  function closeActionMenu() {
+    const menu = document.getElementById('shop-action-menu');
+    if (menu) menu.classList.add('hidden');
+  }
+
+  function confirmClearChecked() {
+    closeActionMenu();
+    const checked = Data.getShoppingList().filter(i => i.checked || i.pantryUsed);
+    if (checked.length === 0) { App.toast('No checked items to remove', 'warn'); return; }
+    document.getElementById('modal-content').innerHTML = `
+      <h3>Clear checked items?</h3>
+      <p style="margin:8px 0 16px;color:var(--text-muted);font-size:.9rem">${checked.length} item${checked.length !== 1 ? 's' : ''} will be removed from the list.</p>
+      <div class="modal-actions">
+        <button class="btn-secondary" onclick="App.closeModal()">No, keep</button>
+        <button class="btn-danger" onclick="App.closeModal(); Shopping.clearChecked()">Yes, clear</button>
+      </div>`;
+    document.getElementById('modal-overlay').classList.remove('hidden');
+  }
+
+  return { render, toggle, toggleSources, clearChecked, editPrice, savePrice, markPantryUsed, setActualPrice, openAddAdHocItem, _adhocAutocomplete, _adhocSelect, saveAdHocItem, openConfirmShop, confirmShop, setRecipeFilter, toggleRecipeFilter, _setConfirmQty, _setConfirmUnit, setActualQty, setActualUnit, toggleActionMenu, closeActionMenu, confirmClearChecked };
 })();

@@ -88,15 +88,16 @@
     <section id="view-shopping" class="view">
       <div class="section-header">
         <h2>Shopping List</h2>
-        <div class="section-header-actions">
-          <button class="btn-small" onclick="App.pushView('pricebook','Price Book'); PriceBook.render()">Price Book</button>
-          <button class="btn-small" onclick="App.pushView('pantry','Pantry'); Pantry.render()">Pantry</button>
-          <button class="btn-small" onclick="Shopping.openAddAdHocItem()">＋ Add item</button>
-          <button class="btn-small btn-small-primary" onclick="Shopping.openConfirmShop()">Confirm shop</button>
-          <button class="btn-small" onclick="Shopping.clearChecked()">Clear checked</button>
-        </div>
       </div>
       <div id="shopping-list"></div>
+      <!-- Bottom-left action menu -->
+      <div id="shop-action-menu" class="fab-menu-left hidden">
+        <button class="fab-menu-item" onclick="Shopping.closeActionMenu(); Shopping.openConfirmShop()">✔ Confirm shop</button>
+        <button class="fab-menu-item" onclick="Shopping.confirmClearChecked()">🗑 Clear checked</button>
+      </div>
+      <button class="fab fab-left" onclick="Shopping.toggleActionMenu()" title="Actions">☰</button>
+      <!-- Bottom-right FAB -->
+      <button class="fab" onclick="Shopping.openAddAdHocItem()" title="Add item">＋</button>
     </section>
 
     <!-- IMPORT -->
