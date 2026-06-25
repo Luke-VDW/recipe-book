@@ -87,10 +87,24 @@ const Shopping = (() => {
   }
 
   let _confirmQtyOverrides = {};
+  let _confirmUnitOverrides = {};
 
   function _setConfirmQty(idx, value) {
     const qty = parseFloat(value);
     _confirmQtyOverrides[idx] = isNaN(qty) || qty < 0 ? null : qty;
+  }
+
+  function _setConfirmUnit(idx, value) {
+    _confirmUnitOverrides[idx] = value || null;
+  }
+
+  function setActualQty(idx, value) {
+    const qty = parseFloat(value);
+    Data.updateShoppingItem(idx, { actualQty: isNaN(qty) || qty < 0 ? null : qty });
+  }
+
+  function setActualUnit(idx, value) {
+    Data.updateShoppingItem(idx, { actualUnit: value || null });
   }
 
   function _buildRecipeFilterBar(items) {
@@ -115,7 +129,9 @@ const Shopping = (() => {
         <button class="shop-price-set" onclick="Shopping.editPrice(${idx})">+ Set price</button>
       </div>`;
     }
-    const cost = Data.lookupPrice(item.name, item.qty, item.unit);
+    const displayQty = item.actualQty != null ? item.actualQty : item.qty;
+    const displayUnit = item.actualUnit || item.unit;
+    const cost = Data.lookupPrice(item.name, displayQty, displayUnit);
     const costHtml = cost != null && cost > 0
       ? `<span class="shop-price-cost">R ${cost.toFixed(2)}</span><span class="shop-price-sep">·</span>`
       : '';
@@ -204,6 +220,18 @@ const Shopping = (() => {
       }
     }
 
+    // Inline actual qty row — shown on unchecked, non-pantry-used items
+    const iqUnits = ['g','100g','kg','ml','100ml','l','item','tsp','tbsp','clove','bunch','head','can','packet','loaf','dozen'];
+    const iqUnitOpts = iqUnits.map(u => `<option value="${u}"${(item.actualUnit || item.unit || 'item') === u ? ' selected' : ''}>${u}</option>`).join('');
+    const inlineQtyRow = !item.pantryUsed ? `<div class="shop-inline-qty-row">
+      <span class="shop-iq-label">Actual:</span>
+      <input type="number" class="shop-iq-input" step="0.01" min="0"
+        value="${item.actualQty != null ? item.actualQty : ''}"
+        placeholder="${fmtQty(item.qty) || '?'}"
+        onchange="Shopping.setActualQty(${item._idx}, this.value)" />
+      <select class="shop-iq-unit" onchange="Shopping.setActualUnit(${item._idx}, this.value)">${iqUnitOpts}</select>
+    </div>` : '';
+
     const actualInput = `<input type="number" class="shop-actual-input" id="shop-actual-${item._idx}"
       step="0.01" min="0"
       value="${item.actualPrice != null ? item.actualPrice : ''}"
@@ -220,6 +248,7 @@ const Shopping = (() => {
             ${srcBtn}
           </div>
           ${usePantryBtn}
+          ${inlineQtyRow}
           <div class="shop-price-row">
             ${_renderPriceDisplay(item._idx, item)}
             <div class="shop-actual-wrap">${actualInput}</div>
@@ -473,6 +502,7 @@ const Shopping = (() => {
 
   function openConfirmShop() {
     _confirmQtyOverrides = {};
+    _confirmUnitOverrides = {};
     const items = Data.getShoppingList();
     const bought = items.map((item, idx) => ({ ...item, _origIdx: idx })).filter(i => i.checked);
     const pantryItems = items.map((item, idx) => ({ ...item, _origIdx: idx })).filter(i => i.pantryUsed);
@@ -493,11 +523,15 @@ const Shopping = (() => {
       } else {
         costHtml = `<span class="confirm-item-cost"><span class="shop-est-badge">~est</span> —</span>`;
       }
+      const confirmQty = item.actualQty != null ? item.actualQty : item.qty;
+      const confirmUnit = item.actualUnit || item.unit || 'item';
+      const confUnits = ['g','100g','kg','ml','100ml','l','item','tsp','tbsp','clove','bunch','head','can','packet','loaf','dozen'];
+      const confUnitOpts = confUnits.map(u => `<option value="${u}"${u === confirmUnit ? ' selected' : ''}>${u}</option>`).join('');
       const qtyInput = `<span class="confirm-item-qty-wrap"><input type="number" class="confirm-item-qty-input"
         id="confirm-qty-${item._origIdx}" step="0.01" min="0"
-        value="${fmtQty(item.qty) || ''}" placeholder="${fmtQty(item.qty) || ''}"
+        value="${fmtQty(confirmQty) || ''}" placeholder="${fmtQty(item.qty) || ''}"
         oninput="Shopping._setConfirmQty(${item._origIdx}, this.value)"
-        title="Actual qty purchased" /><span class="confirm-item-unit">${_esc(item.unit || '')}</span></span>`;
+        title="Actual qty purchased" /><select class="confirm-item-unit-sel" onchange="Shopping._setConfirmUnit(${item._origIdx}, this.value)">${confUnitOpts}</select></span>`;
       return `<div class="confirm-item-row">
       <span class="confirm-item-name">${_esc(item.name)}</span>
       ${qtyInput}
@@ -570,10 +604,11 @@ const Shopping = (() => {
 
     // 1. Update price book for bought items with actualPrice
     bought.forEach(item => {
-      const purchaseQty = _confirmQtyOverrides[item._origIdx] ?? item.qty;
+      const purchaseQty = _confirmQtyOverrides[item._origIdx] ?? item.actualQty ?? item.qty;
+      const purchaseUnit = _confirmUnitOverrides[item._origIdx] ?? item.actualUnit ?? item.unit ?? 'item';
       if (item.actualPrice != null && purchaseQty) {
         Data.setPriceEntry(item.name.toLowerCase().trim(), {
-          unit: item.unit || 'item',
+          unit: purchaseUnit,
           pricePerUnit: item.actualPrice / purchaseQty,
           retailer,
         });
@@ -582,10 +617,11 @@ const Shopping = (() => {
 
     // 2. Update pantry for bought items (add as new batch for FIFO tracking)
     bought.forEach(item => {
-      const purchaseQty = _confirmQtyOverrides[item._origIdx] ?? item.qty;
+      const purchaseQty = _confirmQtyOverrides[item._origIdx] ?? item.actualQty ?? item.qty;
+      const purchaseUnit = _confirmUnitOverrides[item._origIdx] ?? item.actualUnit ?? item.unit ?? 'item';
       if (purchaseQty) {
         const existing = Data.getPantryItem(item.name);
-        Data.addPantryBatch(item.name, purchaseQty, item.unit || 'item', { gramEquiv: existing?.gramEquiv });
+        Data.addPantryBatch(item.name, purchaseQty, purchaseUnit, { gramEquiv: existing?.gramEquiv });
       }
     });
 
@@ -614,5 +650,5 @@ const Shopping = (() => {
     App.toast('Checked items removed');
   }
 
-  return { render, toggle, toggleSources, clearChecked, editPrice, savePrice, markPantryUsed, setActualPrice, openAddAdHocItem, _adhocAutocomplete, _adhocSelect, saveAdHocItem, openConfirmShop, confirmShop, setRecipeFilter, toggleRecipeFilter, _setConfirmQty };
+  return { render, toggle, toggleSources, clearChecked, editPrice, savePrice, markPantryUsed, setActualPrice, openAddAdHocItem, _adhocAutocomplete, _adhocSelect, saveAdHocItem, openConfirmShop, confirmShop, setRecipeFilter, toggleRecipeFilter, _setConfirmQty, _setConfirmUnit, setActualQty, setActualUnit };
 })();
