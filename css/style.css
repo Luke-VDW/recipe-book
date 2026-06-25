@@ -805,10 +805,16 @@ body {
 }
 .pantry-card-left {
   display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+  min-width: 0;
+}
+.pantry-card-main-row {
+  display: flex;
   align-items: center;
   gap: 8px;
   flex-wrap: wrap;
-  flex: 1;
 }
 .pantry-card-name {
   font-weight: 700;

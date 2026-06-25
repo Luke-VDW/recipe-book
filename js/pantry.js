@@ -46,9 +46,11 @@ const Pantry = (() => {
         <div class="pantry-card">
           <div class="pantry-card-header">
             <div class="pantry-card-left">
-              <span class="pantry-card-name">${_esc(item.ingredient)}</span>
-              <span class="pantry-card-qty">${_fmtQty(item.qty)} ${_esc(item.unit)}</span>
-              ${perishableHtml}
+              <div class="pantry-card-main-row">
+                <span class="pantry-card-name">${_esc(item.ingredient)}</span>
+                <span class="pantry-card-qty">${_fmtQty(item.qty)} ${_esc(item.unit)}</span>
+                ${perishableHtml}
+              </div>
               ${_fmtBatches(item)}
             </div>
             <div class="pantry-card-actions">
