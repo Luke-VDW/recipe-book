@@ -24,7 +24,6 @@ const Recipes = (() => {
 
   let _ingCount = 0;
   let _stepCount = 0;
-  let _draggedStepId = null;
 
   function parseIngredients(text) {
     if (!text) return [];
@@ -64,13 +63,13 @@ const Recipes = (() => {
   }
 
   function _stepRowHtml(n, text) {
-    return `<div class="step-row" id="step-row-${n}" draggable="true"
-        ondragstart="Recipes._stepDragStart(event,${n})"
-        ondragover="Recipes._stepDragOver(event)"
-        ondrop="Recipes._stepDrop(event,${n})">
-      <span class="step-drag-handle" title="Drag to reorder">⠿</span>
-      <input type="text" id="step-text-${n}" class="step-text-input"
-        value="${_esc(text || '')}" placeholder="Describe this step…" />
+    return `<div class="step-row" id="step-row-${n}">
+      <div class="step-move-btns">
+        <button type="button" class="step-move-btn" onclick="Recipes._moveStep(${n},-1)" title="Move up">▲</button>
+        <button type="button" class="step-move-btn" onclick="Recipes._moveStep(${n},1)" title="Move down">▼</button>
+      </div>
+      <textarea id="step-text-${n}" class="step-text-input" rows="2"
+        placeholder="Describe this step…">${_esc(text || '')}</textarea>
       <button type="button" class="btn-row-remove" onclick="Recipes._removeStepRow(${n})">✕</button>
     </div>`;
   }
@@ -99,24 +98,16 @@ const Recipes = (() => {
     if (row) row.remove();
   }
 
-  function _stepDragStart(e, n) {
-    _draggedStepId = n;
-    e.dataTransfer.effectAllowed = 'move';
-  }
-
-  function _stepDragOver(e) {
-    e.preventDefault();
-    e.dataTransfer.dropEffect = 'move';
-  }
-
-  function _stepDrop(e, n) {
-    e.preventDefault();
-    if (_draggedStepId === null || _draggedStepId === n) return;
-    const dragged = document.getElementById('step-row-' + _draggedStepId);
-    const target  = document.getElementById('step-row-' + n);
-    if (!dragged || !target) return;
-    target.parentNode.insertBefore(dragged, target);
-    _draggedStepId = null;
+  function _moveStep(n, direction) {
+    const row = document.getElementById('step-row-' + n);
+    if (!row) return;
+    if (direction === -1) {
+      const prev = row.previousElementSibling;
+      if (prev) row.parentNode.insertBefore(row, prev);
+    } else {
+      const next = row.nextElementSibling;
+      if (next) row.parentNode.insertBefore(next, row);
+    }
   }
 
   function _ingRowHtml(n, qty, unit, name) {
@@ -674,6 +665,7 @@ const Recipes = (() => {
     };
     if (existingId) {
       Data.updateRecipe(recipe);
+      Data.ensurePriceBookEntries(parseIngredients(recipe.ingredients));
       App.toast('Recipe updated ✓');
       openDetail(existingId);
     } else {
@@ -783,5 +775,5 @@ const Recipes = (() => {
            editCalories, cancelEditCalories, saveCalories, calculateCalories,
            openCookConfirm, _cookRefresh, _cookAddExtra, confirmCook,
            _addIngRow, _removeIngRow,
-           _addStepRow, _removeStepRow, _stepDragStart, _stepDragOver, _stepDrop };
+           _addStepRow, _removeStepRow, _moveStep };
 })();
