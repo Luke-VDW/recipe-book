@@ -66,10 +66,23 @@ const Shopping = (() => {
     return (s || '').replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
   }
 
-  let _recipeFilter = null;
+  let _recipeFilter = null; // null = All; Set = selected recipe names
 
   function setRecipeFilter(name) {
-    _recipeFilter = name || null;
+    _recipeFilter = null; // reset to All
+    render();
+  }
+
+  function toggleRecipeFilter(name) {
+    if (!name) { _recipeFilter = null; render(); return; }
+    if (!_recipeFilter) {
+      _recipeFilter = new Set([name]);
+    } else if (_recipeFilter.has(name)) {
+      _recipeFilter.delete(name);
+      if (_recipeFilter.size === 0) _recipeFilter = null;
+    } else {
+      _recipeFilter.add(name);
+    }
     render();
   }
 
@@ -86,11 +99,13 @@ const Shopping = (() => {
       (item.sources || []).forEach(s => { if (s.recipe) names.add(s.recipe); });
     });
     if (names.size < 2) return '';
-    const chips = ['All', ...names].map(name => {
-      const active = (name === 'All' ? !_recipeFilter : _recipeFilter === name) ? ' active' : '';
-      return `<button class="shop-recipe-chip${active}" onclick="Shopping.setRecipeFilter(${name === 'All' ? 'null' : JSON.stringify(name)})">${_esc(name)}</button>`;
+    const allActive = !_recipeFilter || _recipeFilter.size === 0;
+    const allChip = `<button class="shop-recipe-chip${allActive ? ' active' : ''}" onclick="Shopping.setRecipeFilter(null)">All</button>`;
+    const recipeChips = [...names].map(name => {
+      const isActive = _recipeFilter && _recipeFilter.has(name);
+      return `<button class="shop-recipe-chip${isActive ? ' active' : ''}" data-recipe="${_esc(name)}" onclick="Shopping.toggleRecipeFilter(this.dataset.recipe)">${_esc(name)}</button>`;
     }).join('');
-    return `<div class="shop-recipe-filter">${chips}</div>`;
+    return `<div class="shop-recipe-filter">${allChip}${recipeChips}</div>`;
   }
 
   function _renderPriceDisplay(idx, item) {
@@ -307,11 +322,11 @@ const Shopping = (() => {
 
     const filterBar = _buildRecipeFilterBar(items);
 
-    const visibleItems = !_recipeFilter
+    const visibleItems = !_recipeFilter || _recipeFilter.size === 0
       ? items
       : items.filter(item => {
           if (!item.sources || item.sources.length === 0) return true;
-          return item.sources.some(s => s.recipe === _recipeFilter);
+          return item.sources.some(s => _recipeFilter.has(s.recipe));
         });
 
     const groups = {};
@@ -599,5 +614,5 @@ const Shopping = (() => {
     App.toast('Checked items removed');
   }
 
-  return { render, toggle, toggleSources, clearChecked, editPrice, savePrice, markPantryUsed, setActualPrice, openAddAdHocItem, _adhocAutocomplete, _adhocSelect, saveAdHocItem, openConfirmShop, confirmShop, setRecipeFilter, _setConfirmQty };
+  return { render, toggle, toggleSources, clearChecked, editPrice, savePrice, markPantryUsed, setActualPrice, openAddAdHocItem, _adhocAutocomplete, _adhocSelect, saveAdHocItem, openConfirmShop, confirmShop, setRecipeFilter, toggleRecipeFilter, _setConfirmQty };
 })();
