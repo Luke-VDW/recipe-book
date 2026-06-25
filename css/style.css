@@ -69,6 +69,8 @@ body {
 /* ── VIEWS ── */
 .view { display: none; padding: 12px 12px 24px; min-height: 100%; background: var(--bg); }
 .view.active { display: block; }
+/* Extra bottom padding on views that have a fixed FAB so content isn't hidden behind it */
+#view-recipes, #view-shopping, #view-planner { padding-bottom: 88px; }
 
 /* ── BOTTOM NAV ── */
 #bottom-nav {
@@ -248,7 +250,7 @@ body {
 
 /* Hide controls when not on the relevant tab */
 #view-planner:not(.filter-active) .planner-filter-bar { display: none; }
-#view-planner:not(.meals-active) .planner-actions { display: none; }
+/* .planner-actions removed — replaced by FAB */
 
 /* ── CALORIE SUMMARY TABLE ── */
 .summary-header {
@@ -348,8 +350,23 @@ body {
   color: var(--text); outline: none;
 }
 .meal-slot select:focus { border-color: var(--md-green); }
-.slot-kcal { font-size: 0.72rem; color: var(--text-muted); }
-.planner-actions { margin-top: 14px; display: flex; gap: 8px; }
+.slot-kcal { font-size: 0.72rem; color: var(--text-muted); display: block; margin-top: 1px; }
+.meal-slot-entry { display: flex; flex-direction: column; }
+.meal-slot-entry + .meal-slot-entry { margin-top: 5px; }
+.meal-slot-entry-row { display: flex; align-items: center; gap: 4px; }
+.meal-slot-entry-row select { flex: 1; min-width: 0; }
+.meal-entry-remove {
+  flex-shrink: 0; background: none; border: 1px solid var(--border);
+  border-radius: 6px; color: var(--text-muted); font-size: 0.7rem;
+  padding: 4px 6px; cursor: pointer; line-height: 1;
+}
+.meal-entry-remove:hover { background: #fee2e2; color: var(--danger); border-color: var(--danger); }
+.meal-add-btn {
+  margin-top: 5px; background: none; border: 1px dashed var(--md-green);
+  border-radius: 6px; color: var(--md-green); font-size: 0.75rem;
+  padding: 3px 8px; cursor: pointer; width: 100%;
+}
+.meal-add-btn:hover { background: var(--lt-green); }
 .planner-filter-bar { margin: 8px 0 10px; position: relative; }
 .planner-filter-bar input {
   width: 100%; padding: 8px 12px;

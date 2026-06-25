@@ -15,27 +15,59 @@ const Planner = (() => {
   };
   const MEAL_LABELS = { breakfast:'Breakfast', lunch:'Lunch', dinner:'Dinner' };
 
+  function _normSlot(val) {
+    if (!val) return [];
+    if (Array.isArray(val)) return val.filter(Boolean);
+    return [val];
+  }
+
   function _buildDayHtml(week, day, dayData, filteredRecipes) {
     const slots = Data.MEALS.map(meal => {
-      const selected = dayData[meal] || '';
-      const savedRecipe = selected ? Data.getRecipeById(selected) : null;
-      const slotRecipes = (savedRecipe && !filteredRecipes.find(r => r.id === selected))
-        ? [savedRecipe, ...filteredRecipes]
-        : filteredRecipes;
-      const kcalHtml = savedRecipe
-        ? `<div class="slot-kcal">${savedRecipe.kcalTotal != null ? Math.round(savedRecipe.kcalTotal / (savedRecipe.servings || 1)) + ' kcal' : '— kcal'}</div>`
+      const rawVal = dayData[meal];
+      const ids = _normSlot(rawVal);
+      // Always render at least one entry row
+      const entries = ids.length === 0 ? [''] : [...ids, ...(ids.length > 0 && ids[ids.length - 1] === '' ? [] : [''])];
+      // Show all filled entries + one empty entry at the end (as the "add" row)
+      // But limit total visible to filled + 1 empty trailing
+      const filledIds = ids;
+      const displayEntries = filledIds.length === 0 ? [''] : filledIds;
+
+      const entryHtml = displayEntries.map((selectedId, idx) => {
+        const savedRecipe = selectedId ? Data.getRecipeById(selectedId) : null;
+        const slotRecipes = (savedRecipe && !filteredRecipes.find(r => r.id === selectedId))
+          ? [savedRecipe, ...filteredRecipes]
+          : filteredRecipes;
+        const kcalHtml = savedRecipe
+          ? `<span class="slot-kcal">${savedRecipe.kcalTotal != null ? Math.round(savedRecipe.kcalTotal / (savedRecipe.servings || 1)) + ' kcal' : '— kcal'}</span>`
+          : '';
+        const removeBtn = displayEntries.length > 1
+          ? `<button class="meal-entry-remove" onclick="Planner.removeMealRecipe(${week},'${day}','${meal}',${idx})" title="Remove">✕</button>`
+          : '';
+        return `<div class="meal-slot-entry">
+          <div class="meal-slot-entry-row">
+            <select onchange="Planner.setSlot(${week},'${day}','${meal}',${idx},this.value)">
+              <option value="" ${!selectedId ? 'selected' : ''}>— none —</option>
+              ${slotRecipes.map(r =>
+                `<option value="${r.id}" ${selectedId === r.id ? 'selected' : ''}>${r.name}</option>`
+              ).join('')}
+            </select>
+            ${removeBtn}
+          </div>
+          ${kcalHtml}
+        </div>`;
+      }).join('');
+
+      const lastFilled = filledIds.length > 0 && filledIds[filledIds.length - 1];
+      const addBtn = lastFilled && filledIds.length < 4
+        ? `<button class="meal-add-btn" onclick="Planner.addMealRecipe(${week},'${day}','${meal}')" title="Add another">＋ add</button>`
         : '';
+
       return `
       <div class="meal-slot">
         <span class="meal-label">${MEAL_LABELS[meal]}</span>
         <div class="meal-slot-right">
-          <select onchange="Planner.setSlot(${week},'${day}','${meal}',this.value)">
-            <option value="" ${!selected ? 'selected' : ''}>— none —</option>
-            ${slotRecipes.map(r =>
-              `<option value="${r.id}" ${selected === r.id ? 'selected' : ''}>${r.name}</option>`
-            ).join('')}
-          </select>
-          ${kcalHtml}
+          ${entryHtml}
+          ${addBtn}
         </div>
       </div>`;
     }).join('');
@@ -68,15 +100,22 @@ const Planner = (() => {
       let dayPartial = false;
       const parts = [];
       Data.MEALS.forEach(meal => {
-        const id = dayData[meal];
-        if (!id) return;
-        const r = Data.getRecipeById(id);
-        if (!r) return;
-        const { cost, partial } = _calcRecipeCost(r);
+        const ids = _normSlot(dayData[meal]);
+        if (ids.length === 0) return;
+        let slotCost = 0;
+        let slotPartial = false;
+        ids.forEach(id => {
+          if (!id) return;
+          const r = Data.getRecipeById(id);
+          if (!r) return;
+          const { cost, partial } = _calcRecipeCost(r);
+          if (partial) { hasMissingPrice = true; slotPartial = true; }
+          slotCost += cost;
+        });
         const abbrev = meal[0].toUpperCase();
-        if (partial) { hasMissingPrice = true; dayPartial = true; }
-        dayTotal += cost;
-        parts.push(`${abbrev}:${partial ? '~' : ''}R${cost.toFixed(0)}`);
+        if (slotPartial) dayPartial = true;
+        dayTotal += slotCost;
+        parts.push(`${abbrev}:${slotPartial ? '~' : ''}R${slotCost.toFixed(0)}`);
       });
       return { label: DAY_LABELS[day], parts, dayTotal, dayPartial };
     });
@@ -146,8 +185,6 @@ const Planner = (() => {
     const plannerView = document.getElementById('view-planner');
     if (plannerView) plannerView.classList.toggle('meals-active', _currentTab === 'meals');
     if (plannerView) plannerView.classList.toggle('filter-active', _currentTab === 'meals' || _currentTab === 'treats');
-    const genBtn = document.getElementById('btn-generate-shopping');
-    if (genBtn) genBtn.textContent = `🛒 Generate Week ${_currentWeek} List`;
     if (_currentTab === 'meals')   _renderMeals();
     if (_currentTab === 'treats')  _renderTreats();
     if (_currentTab === 'summary') _renderSummary();
@@ -240,19 +277,20 @@ const Planner = (() => {
       let dayTotal = 0;
       const parts = [];
       Data.MEALS.forEach(meal => {
-        const id = dayData[meal];
-        if (!id) return;
-        const r = Data.getRecipeById(id);
-        if (!r) return;
+        const ids = _normSlot(dayData[meal]);
+        if (ids.length === 0) return;
+        let slotKcal = 0;
+        let slotMissing = false;
+        ids.forEach(id => {
+          if (!id) return;
+          const r = Data.getRecipeById(id);
+          if (!r) return;
+          if (r.kcalTotal == null) { hasMissingKcal = true; slotMissing = true; }
+          else slotKcal += Math.round(r.kcalTotal / (r.servings || 1));
+        });
         const abbrev = meal[0].toUpperCase();
-        if (r.kcalTotal == null) {
-          hasMissingKcal = true;
-          parts.push(`${abbrev}:—*`);
-        } else {
-          const kcal = Math.round(r.kcalTotal / (r.servings || 1));
-          dayTotal += kcal;
-          parts.push(`${abbrev}:${kcal}`);
-        }
+        if (slotMissing) parts.push(`${abbrev}:—*`);
+        else { dayTotal += slotKcal; parts.push(`${abbrev}:${slotKcal}`); }
       });
       return { label: DAY_LABELS[day], parts, dayTotal };
     });
@@ -387,8 +425,18 @@ const Planner = (() => {
     App.toast((r ? r.name : 'Treat') + ' added ✓');
   }
 
-  function setSlot(week, day, meal, recipeId) {
-    Data.setMealSlot(week, day, meal, recipeId);
+  function setSlot(week, day, meal, idx, recipeId) {
+    Data.setMealSlot(week, day, meal, idx, recipeId);
+  }
+
+  function addMealRecipe(week, day, meal) {
+    Data.addMealSlot(week, day, meal);
+    _renderMeals();
+  }
+
+  function removeMealRecipe(week, day, meal, idx) {
+    Data.removeMealSlot(week, day, meal, idx);
+    _renderMeals();
   }
 
   function openAddTreatModal() {
@@ -450,8 +498,9 @@ const Planner = (() => {
     const slotCounts = {}; // recipeId → number of slots
     Data.DAYS.forEach(d => {
       Data.MEALS.forEach(m => {
-        const id = (wk[d] || {})[m];
-        if (id) slotCounts[id] = (slotCounts[id] || 0) + 1;
+        _normSlot((wk[d] || {})[m]).forEach(id => {
+          if (id) slotCounts[id] = (slotCounts[id] || 0) + 1;
+        });
       });
     });
 
@@ -519,6 +568,7 @@ const Planner = (() => {
     Shopping.render();
   }
 
-  return { render, showWeek, showTab, setSlot, generateShoppingList, filterRecipes,
+  return { render, showWeek, showTab, setSlot, addMealRecipe, removeMealRecipe,
+           generateShoppingList, filterRecipes,
            openAddTreatModal, confirmAddTreat, removeTreat, updateTreatBatches, addTreatDirect };
 })();

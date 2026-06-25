@@ -259,7 +259,8 @@ const App = (() => {
       el.style.cssText = `
         position:fixed; bottom:calc(var(--nav-h) + 16px); left:50%; transform:translateX(-50%);
         background:#1b1b1b; color:#fff; padding:10px 18px; border-radius:20px;
-        font-size:.88rem; font-weight:600; z-index:500; white-space:nowrap;
+        font-size:.88rem; font-weight:600; z-index:500; white-space:normal;
+        max-width:calc(100vw - 32px); text-align:center; box-sizing:border-box;
         box-shadow:0 4px 12px rgba(0,0,0,.25); transition:opacity .2s;
       `;
       document.body.appendChild(el);

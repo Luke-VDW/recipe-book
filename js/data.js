@@ -237,11 +237,41 @@ const Data = (() => {
     return _db.recipes.find(r => r.id === id) || null;
   }
 
-  function setMealSlot(week, day, meal, recipeId) {
+  function _normSlotData(val) {
+    if (!val) return [];
+    if (Array.isArray(val)) return val.filter(Boolean);
+    return [val];
+  }
+
+  function setMealSlot(week, day, meal, idx, recipeId) {
     const wk = 'week' + week;
     _db.mealPlan[wk] = _db.mealPlan[wk] || {};
     _db.mealPlan[wk][day] = _db.mealPlan[wk][day] || {};
-    _db.mealPlan[wk][day][meal] = recipeId;
+    const current = _normSlotData(_db.mealPlan[wk][day][meal]);
+    while (current.length <= idx) current.push('');
+    current[idx] = recipeId || '';
+    const cleaned = current.filter(Boolean);
+    _db.mealPlan[wk][day][meal] = cleaned.length === 0 ? '' : cleaned.length === 1 ? cleaned[0] : cleaned;
+    save();
+  }
+
+  function addMealSlot(week, day, meal) {
+    const wk = 'week' + week;
+    _db.mealPlan[wk] = _db.mealPlan[wk] || {};
+    _db.mealPlan[wk][day] = _db.mealPlan[wk][day] || {};
+    const current = _normSlotData(_db.mealPlan[wk][day][meal]);
+    current.push('');
+    _db.mealPlan[wk][day][meal] = current.length > 1 ? current : (current[0] || '');
+    save();
+  }
+
+  function removeMealSlot(week, day, meal, idx) {
+    const wk = 'week' + week;
+    if (!_db.mealPlan[wk] || !_db.mealPlan[wk][day]) return;
+    const current = _normSlotData(_db.mealPlan[wk][day][meal]);
+    current.splice(idx, 1);
+    const cleaned = current.filter(Boolean);
+    _db.mealPlan[wk][day][meal] = cleaned.length === 0 ? '' : cleaned.length === 1 ? cleaned[0] : cleaned;
     save();
   }
 
@@ -766,7 +796,7 @@ const Data = (() => {
   return {
     load, save, getRecipes, getPlan, getPantry, getShoppingList,
     addRecipe, updateRecipe, deleteRecipe, getRecipeById,
-    setMealSlot, setShoppingList, addShoppingItem, setTreats, setRecipeCalories, toggleShoppingItem, updateShoppingItem,
+    setMealSlot, addMealSlot, removeMealSlot, setShoppingList, addShoppingItem, setTreats, setRecipeCalories, toggleShoppingItem, updateShoppingItem,
     isDriveConnected, connectDrive, disconnectDrive, syncDrive,
     exportJSON, importJSON, handleImportFile, clearAll,
     loadStarterData, loadStarterPrices, getClientId, setClientId,
