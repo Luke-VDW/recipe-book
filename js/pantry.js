@@ -4,6 +4,7 @@
 
 const Pantry = (() => {
   let _filter = '';
+  let _sort = 'az';
   let _editingName = null;
 
   const UNITS = ['g','100g','kg','ml','100ml','l','item','tsp','tbsp','clove','bunch','head','can','packet','loaf','dozen'];
@@ -29,7 +30,12 @@ const Pantry = (() => {
     const filterLower = _filter.toLowerCase();
     const filtered = filterLower
       ? allItems.filter(p => p.ingredient.toLowerCase().includes(filterLower))
-      : allItems;
+      : allItems.slice();
+
+    if (_sort === 'az') filtered.sort((a, b) => a.ingredient.localeCompare(b.ingredient));
+    else if (_sort === 'za') filtered.sort((a, b) => b.ingredient.localeCompare(a.ingredient));
+    else if (_sort === 'most') filtered.sort((a, b) => (parseFloat(b.qty) || 0) - (parseFloat(a.qty) || 0));
+    else if (_sort === 'least') filtered.sort((a, b) => (parseFloat(a.qty) || 0) - (parseFloat(b.qty) || 0));
 
     if (filtered.length === 0) {
       el.innerHTML = `<div class="empty-state"><span class="emoji">🥫</span>${
@@ -64,6 +70,11 @@ const Pantry = (() => {
 
   function filter() {
     _filter = (document.getElementById('pantry-search')?.value || '').trim();
+    render();
+  }
+
+  function sort() {
+    _sort = document.getElementById('pantry-sort')?.value || 'az';
     render();
   }
 
@@ -216,5 +227,5 @@ const Pantry = (() => {
     return (s || '').replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
   }
 
-  return { render, filter, openAddForm, saveNew, openEditForm, save, remove, resetPerishables, onUnitChange };
+  return { render, filter, sort, openAddForm, saveNew, openEditForm, save, remove, resetPerishables, onUnitChange };
 })();

@@ -4,6 +4,7 @@
 
 const PriceBook = (() => {
   let _filter = '';
+  let _sort = 'az';
   let _showOrphansOnly = false;
   let _modalIngredientName = '';
   let _modalPriceIdx = null;
@@ -49,6 +50,11 @@ const PriceBook = (() => {
       : entries.slice();
     if (_showOrphansOnly) filtered = filtered.filter(e => isOrphaned(e.ingredient));
 
+    if (_sort === 'az') filtered.sort((a, b) => a.ingredient.localeCompare(b.ingredient));
+    else if (_sort === 'za') filtered.sort((a, b) => b.ingredient.localeCompare(a.ingredient));
+    else if (_sort === 'priced') filtered.sort((a, b) => (b.prices.length > 0 ? 1 : 0) - (a.prices.length > 0 ? 1 : 0));
+    else if (_sort === 'unpriced') filtered.sort((a, b) => (a.prices.length > 0 ? 1 : 0) - (b.prices.length > 0 ? 1 : 0));
+
     if (filtered.length === 0) {
       el.innerHTML = `<div class="empty-state"><span class="emoji">📋</span>${
         filterLower || _showOrphansOnly ? 'No matches.' : 'No ingredients yet. Tap ＋ Add to get started.'
@@ -93,6 +99,11 @@ const PriceBook = (() => {
 
   function filter() {
     _filter = (document.getElementById('pb-search')?.value || '').trim();
+    render();
+  }
+
+  function sort() {
+    _sort = document.getElementById('pb-sort')?.value || 'az';
     render();
   }
 
@@ -273,5 +284,5 @@ const PriceBook = (() => {
     return (s || '').replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
   }
 
-  return { render, filter, toggleOrphans, openAddIngredientForm, saveNewIngredient, openAddPriceForm, openEditPriceForm, savePrice, removePrice, removeIngredient, onUnitChange };
+  return { render, filter, sort, toggleOrphans, openAddIngredientForm, saveNewIngredient, openAddPriceForm, openEditPriceForm, savePrice, removePrice, removeIngredient, onUnitChange };
 })();

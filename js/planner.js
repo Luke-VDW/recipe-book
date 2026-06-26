@@ -8,6 +8,9 @@ const Planner = (() => {
   let _currentTab  = 'meals'; // 'meals' | 'treats' | 'summary'
   let _recipeFilter = '';
   let _filterTimer = null;
+  let _pendingSlots = {}; // key: "week-day-meal" → count of pending empty selects
+
+  function _slotKey(w, d, m) { return w + '-' + d + '-' + m; }
 
   const DAY_LABELS = {
     monday:'Monday', tuesday:'Tuesday', wednesday:'Wednesday',
@@ -23,26 +26,39 @@ const Planner = (() => {
 
   function _buildDayHtml(week, day, dayData, filteredRecipes) {
     const slots = Data.MEALS.map(meal => {
-      const rawVal = dayData[meal];
-      const ids = _normSlot(rawVal);
-      // Always render at least one entry row
-      const entries = ids.length === 0 ? [''] : [...ids, ...(ids.length > 0 && ids[ids.length - 1] === '' ? [] : [''])];
-      // Show all filled entries + one empty entry at the end (as the "add" row)
-      // But limit total visible to filled + 1 empty trailing
-      const filledIds = ids;
-      const displayEntries = filledIds.length === 0 ? [''] : filledIds;
+      const filledIds = _normSlot(dayData[meal]);
+      const key = _slotKey(week, day, meal);
+      const pendingCount = _pendingSlots[key] || 0;
+
+      // displayEntries = all filled recipe IDs + N pending empty strings
+      const displayEntries = [...filledIds];
+      for (let p = 0; p < pendingCount; p++) displayEntries.push('');
+      if (displayEntries.length === 0) displayEntries.push(''); // always ≥1
 
       const entryHtml = displayEntries.map((selectedId, idx) => {
         const savedRecipe = selectedId ? Data.getRecipeById(selectedId) : null;
         const slotRecipes = (savedRecipe && !filteredRecipes.find(r => r.id === selectedId))
           ? [savedRecipe, ...filteredRecipes]
           : filteredRecipes;
-        const kcalHtml = savedRecipe
-          ? `<span class="slot-kcal">${savedRecipe.kcalTotal != null ? Math.round(savedRecipe.kcalTotal / (savedRecipe.servings || 1)) + ' kcal' : '— kcal'}</span>`
-          : '';
+
         const removeBtn = displayEntries.length > 1
           ? `<button class="meal-entry-remove" onclick="Planner.removeMealRecipe(${week},'${day}','${meal}',${idx})" title="Remove">✕</button>`
           : '';
+
+        const isLast = idx === displayEntries.length - 1;
+        const canAdd = isLast && !!selectedId && displayEntries.length < 4;
+        const kcalText = savedRecipe
+          ? (savedRecipe.kcalTotal != null
+              ? Math.round(savedRecipe.kcalTotal / (savedRecipe.servings || 1)) + ' kcal'
+              : '— kcal')
+          : '';
+        const addBtn = canAdd
+          ? `<button class="meal-add-btn" onclick="Planner.addMealRecipe(${week},'${day}','${meal}')" title="Add another">＋</button>`
+          : '';
+        const footerHtml = (kcalText || addBtn)
+          ? `<div class="meal-slot-footer"><span class="slot-kcal">${kcalText}</span>${addBtn}</div>`
+          : '';
+
         return `<div class="meal-slot-entry">
           <div class="meal-slot-entry-row">
             <select onchange="Planner.setSlot(${week},'${day}','${meal}',${idx},this.value)">
@@ -53,22 +69,14 @@ const Planner = (() => {
             </select>
             ${removeBtn}
           </div>
-          ${kcalHtml}
+          ${footerHtml}
         </div>`;
       }).join('');
-
-      const lastFilled = filledIds.length > 0 && filledIds[filledIds.length - 1];
-      const addBtn = lastFilled && filledIds.length < 4
-        ? `<button class="meal-add-btn" onclick="Planner.addMealRecipe(${week},'${day}','${meal}')" title="Add another">＋ add</button>`
-        : '';
 
       return `
       <div class="meal-slot">
         <span class="meal-label">${MEAL_LABELS[meal]}</span>
-        <div class="meal-slot-right">
-          ${entryHtml}
-          ${addBtn}
-        </div>
+        <div class="meal-slot-right">${entryHtml}</div>
       </div>`;
     }).join('');
     return `
@@ -193,6 +201,7 @@ const Planner = (() => {
   function showWeek(week, tabEl) {
     _currentWeek = week;
     _currentTab = 'meals';
+    _pendingSlots = {};
     if (tabEl) {
       document.querySelectorAll('.week-tab').forEach(t => t.classList.remove('active'));
       tabEl.classList.add('active');
@@ -426,16 +435,36 @@ const Planner = (() => {
   }
 
   function setSlot(week, day, meal, idx, recipeId) {
-    Data.setMealSlot(week, day, meal, idx, recipeId);
+    const plan = Data.getPlan();
+    const filledIds = _normSlot(((plan['week' + week] || {})[day] || {})[meal]);
+    const wasPending = idx >= filledIds.length;
+    if (recipeId) {
+      Data.setMealSlot(week, day, meal, idx, recipeId);
+      if (wasPending) {
+        const key = _slotKey(week, day, meal);
+        _pendingSlots[key] = Math.max(0, (_pendingSlots[key] || 0) - 1);
+      }
+    } else if (!wasPending) {
+      Data.setMealSlot(week, day, meal, idx, '');
+    }
+    _renderMeals();
   }
 
   function addMealRecipe(week, day, meal) {
-    Data.addMealSlot(week, day, meal);
+    const key = _slotKey(week, day, meal);
+    _pendingSlots[key] = (_pendingSlots[key] || 0) + 1;
     _renderMeals();
   }
 
   function removeMealRecipe(week, day, meal, idx) {
-    Data.removeMealSlot(week, day, meal, idx);
+    const plan = Data.getPlan();
+    const filledIds = _normSlot(((plan['week' + week] || {})[day] || {})[meal]);
+    if (idx < filledIds.length) {
+      Data.removeMealSlot(week, day, meal, idx);
+    } else {
+      const key = _slotKey(week, day, meal);
+      _pendingSlots[key] = Math.max(0, (_pendingSlots[key] || 0) - 1);
+    }
     _renderMeals();
   }
 
