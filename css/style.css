@@ -277,6 +277,11 @@ body {
 /* ── RECIPE DETAIL KCAL ── */
 .detail-kcal { font-size: 0.85rem; color: var(--text-muted); }
 
+/* ── Recipe cost estimate ── */
+.recipe-card-cost { font-size: 0.75rem; color: var(--md-green); margin-top: 5px; font-weight: 500; }
+.recipe-cost-gap { color: var(--text-muted); font-weight: 400; }
+.detail-cost { font-size: 0.85rem; color: var(--md-green); font-weight: 500; }
+
 /* ── MINI BUTTONS (recipe form) ── */
 .btn-mini {
   padding: 3px 10px; font-size: 0.78rem;
@@ -1049,7 +1054,7 @@ body {
 /* ── FAB menu (Sub-project G) ───────── */
 .fab-menu {
   position: fixed;
-  bottom: calc(var(--nav-h) + 68px);
+  bottom: calc(var(--nav-h) + env(safe-area-inset-bottom) + 76px);
   right: 16px;
   background: var(--surface);
   border: 1px solid var(--border);
@@ -1061,7 +1066,7 @@ body {
 }
 .fab-menu-left {
   position: fixed;
-  bottom: calc(var(--nav-h) + 68px);
+  bottom: calc(var(--nav-h) + env(safe-area-inset-bottom) + 76px);
   left: 16px;
   right: auto;
   background: var(--surface);

@@ -171,9 +171,11 @@
         </div>
       </div>
       <div class="search-bar">
-        <input id="pb-search" type="search" placeholder="Search ingredients…"
-          oninput="PriceBook.filter()" />
-        <button class="search-clear" onclick="document.getElementById('pb-search').value='';PriceBook.filter()" title="Clear">×</button>
+        <div style="position:relative;flex:1 1 100%;min-width:0">
+          <input id="pb-search" type="search" placeholder="Search ingredients…"
+            oninput="PriceBook.filter()" style="width:100%" />
+          <button class="search-clear" onclick="document.getElementById('pb-search').value='';PriceBook.filter()" title="Clear">×</button>
+        </div>
         <select id="pb-sort" onchange="PriceBook.sort()">
           <option value="az">A → Z</option>
           <option value="za">Z → A</option>
@@ -193,8 +195,10 @@
         </div>
       </div>
       <div class="search-bar">
-        <input id="pantry-search" type="search" placeholder="Search pantry…" oninput="Pantry.filter()" />
-        <button class="search-clear" onclick="document.getElementById('pantry-search').value='';Pantry.filter()" title="Clear">×</button>
+        <div style="position:relative;flex:1 1 100%;min-width:0">
+          <input id="pantry-search" type="search" placeholder="Search pantry…" oninput="Pantry.filter()" style="width:100%" />
+          <button class="search-clear" onclick="document.getElementById('pantry-search').value='';Pantry.filter()" title="Clear">×</button>
+        </div>
         <select id="pantry-sort" onchange="Pantry.sort()">
           <option value="az">A → Z</option>
           <option value="za">Z → A</option>

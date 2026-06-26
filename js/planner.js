@@ -264,12 +264,10 @@ const Planner = (() => {
     }).filter(Boolean).join('');
 
     const emptyHtml = rows === ''
-      ? `<div class="empty-state"><span class="emoji">🍰</span>No treats this week. Tap ＋ to add one.</div>`
+      ? `<div class="empty-state"><span class="emoji">🍰</span>No treats this week. Search for a recipe above to add one.</div>`
       : '';
 
-    el.innerHTML = `
-    <div class="treats-list">${emptyHtml}${rows}</div>
-    <button class="btn-secondary treat-add-btn" onclick="Planner.openAddTreatModal()">＋ Add treat</button>`;
+    el.innerHTML = `<div class="treats-list">${emptyHtml}${rows}</div>`;
   }
 
   function _renderSummary() {

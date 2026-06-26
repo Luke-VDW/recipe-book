@@ -259,6 +259,26 @@ const Recipes = (() => {
     return n % 1 === 0 ? String(n) : n.toFixed(2).replace(/\.?0+$/, '');
   }
 
+  // ── Recipe cost estimate ─────────────
+  function _calcRecipeCost(r) {
+    const ings = parseIngredients(r.ingredients);
+    if (!ings.length) return null;
+    let total = 0, hasCost = false, hasGap = false;
+    for (const ing of ings) {
+      if (!ing.qty && ing.qty !== 0) { hasGap = true; continue; }
+      const cost = Data.lookupPrice(ing.name, ing.qty, ing.unit);
+      if (cost === null) hasGap = true;
+      else { total += cost; hasCost = true; }
+    }
+    if (!hasCost) return null;
+    const servings = r.servings || 1;
+    return {
+      total: Math.round(total * 100) / 100,
+      partial: hasGap,
+      perServing: Math.round((total / servings) * 100) / 100,
+    };
+  }
+
   // ── Render recipe list ───────────────
   function render() {
     filter();
@@ -296,11 +316,16 @@ const Recipes = (() => {
     const cook = r.cookMins ? `${r.cookMins}m cook` : '';
     const srv  = r.servings ? `${r.servings} servings` : '';
     const meta = [r.category, prep, cook, srv].filter(Boolean).join(' · ');
+    const cost = _calcRecipeCost(r);
+    const costHtml = cost
+      ? `<div class="recipe-card-cost">${cost.partial ? '~' : ''}R ${cost.perServing.toFixed(2)}/serving${cost.partial ? '<span class="recipe-cost-gap"> · some prices missing</span>' : ''}</div>`
+      : '';
     return `
       <div class="recipe-card" onclick="Recipes.openDetail('${r.id}')">
         <h3>${r.name}</h3>
         <div class="meta">${meta}</div>
         ${tags ? `<div class="tags">${tags}</div>` : ''}
+        ${costHtml}
       </div>`;
   }
 
@@ -337,6 +362,11 @@ const Recipes = (() => {
     const tags = (r.tags || '').split(',').map(t=>t.trim()).filter(Boolean)
       .map(t => `<span class="tag">${t}</span>`).join('');
 
+    const cost = _calcRecipeCost(r);
+    const costMeta = cost
+      ? `<span class="detail-cost">${cost.partial ? '~' : ''}R ${cost.total.toFixed(2)} total · R ${cost.perServing.toFixed(2)}/serving${cost.partial ? ' ⚠' : ''}</span>`
+      : '';
+
     document.getElementById('detail-content').innerHTML = `
       <h2 class="detail-name">${r.name}</h2>
       <div class="detail-meta">
@@ -351,6 +381,7 @@ const Recipes = (() => {
         <span class="detail-kcal">${r.kcalTotal != null
           ? `${r.kcalTotal} kcal · ${Math.round(r.kcalTotal / (r.servings || 1))} kcal/serving`
           : '— kcal'}</span>
+        ${costMeta}
       </div>
       ${tags ? `<div class="detail-tags">${tags}</div>` : ''}
       <div class="detail-actions">
