@@ -110,6 +110,22 @@ const Recipes = (() => {
     }
   }
 
+  function _ingDatalistHtml() {
+    const seen = new Set();
+    const names = [];
+    (typeof Data !== 'undefined' ? Data.getPriceBook() : []).forEach(c => {
+      const name = (c.ingredient || '').trim();
+      const key = name.toLowerCase();
+      if (!name || seen.has(key)) return;
+      seen.add(key);
+      names.push(name);
+    });
+    names.sort((a, b) => a.localeCompare(b));
+    return `<datalist id="ing-name-options">${
+      names.map(n => `<option value="${_esc(n)}"></option>`).join('')
+    }</datalist>`;
+  }
+
   function _ingRowHtml(n, qty, unit, name) {
     const unitOpts = ING_UNITS.map(u =>
       `<option value="${u}"${u === (unit || 'item') ? ' selected' : ''}>${u}</option>`
@@ -119,6 +135,7 @@ const Recipes = (() => {
         value="${qty != null && qty !== '' ? qty : ''}" placeholder="qty" />
       <select id="ing-unit-${n}" class="ing-unit-select">${unitOpts}</select>
       <input type="text" id="ing-name-${n}" class="ing-name-input"
+        list="ing-name-options" autocomplete="off"
         value="${_esc(name || '')}" placeholder="ingredient name" />
       <button type="button" class="btn-row-remove" onclick="Recipes._removeIngRow(${n})">✕</button>
     </div>`;
@@ -608,6 +625,7 @@ const Recipes = (() => {
       <div class="form-group">
         <label>Ingredients</label>
         <div id="rf-ing-list"></div>
+        ${_ingDatalistHtml()}
         <button type="button" class="btn-small" style="margin-top:4px" onclick="Recipes._addIngRow()">＋ Add ingredient</button>
       </div>
       <div class="form-group">
