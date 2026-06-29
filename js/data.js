@@ -709,86 +709,112 @@ const Data = (() => {
 
   function loadStarterPrices() {
     if (_db.priceBook && _db.priceBook.length > 0) return;
-    const d = '2026-06-17';
+    const d = '2026-06-29';
+    // retailer field marks entries sourced from live Checkers Sixty60 data
     const flat = [
-      // Produce
-      { ingredient: 'onion',         unit: 'kg',   pricePerUnit: 20  },
-      { ingredient: 'garlic',        unit: 'item', pricePerUnit: 4   },
-      { ingredient: 'tomato',        unit: 'kg',   pricePerUnit: 35  },
-      { ingredient: 'potato',        unit: 'kg',   pricePerUnit: 22  },
-      { ingredient: 'carrot',        unit: 'kg',   pricePerUnit: 22  },
-      { ingredient: 'capsicum',      unit: 'kg',   pricePerUnit: 55  },
-      { ingredient: 'cucumber',      unit: 'item', pricePerUnit: 12  },
-      { ingredient: 'spinach',       unit: 'kg',   pricePerUnit: 35  },
-      { ingredient: 'mushroom',      unit: 'kg',   pricePerUnit: 80  },
-      { ingredient: 'broccoli',      unit: 'kg',   pricePerUnit: 50  },
-      { ingredient: 'avocado',       unit: 'item', pricePerUnit: 18  },
-      { ingredient: 'lemon',         unit: 'item', pricePerUnit: 8   },
-      { ingredient: 'lime',          unit: 'item', pricePerUnit: 6   },
-      { ingredient: 'banana',        unit: 'kg',   pricePerUnit: 22  },
-      { ingredient: 'apple',         unit: 'kg',   pricePerUnit: 38  },
-      { ingredient: 'orange',        unit: 'kg',   pricePerUnit: 28  },
-      { ingredient: 'ginger',        unit: '100g', pricePerUnit: 12  },
-      { ingredient: 'chilli',        unit: '100g', pricePerUnit: 15  },
-      { ingredient: 'spring onion',  unit: 'item', pricePerUnit: 6   },
-      { ingredient: 'sweet potato',  unit: 'kg',   pricePerUnit: 28  },
-      // Meat
-      { ingredient: 'beef mince',    unit: 'kg',   pricePerUnit: 140 },
-      { ingredient: 'chicken breast',unit: 'kg',   pricePerUnit: 95  },
-      { ingredient: 'chicken thigh', unit: 'kg',   pricePerUnit: 70  },
-      { ingredient: 'chicken',       unit: 'kg',   pricePerUnit: 80  },
-      { ingredient: 'pork',          unit: 'kg',   pricePerUnit: 110 },
-      { ingredient: 'lamb',          unit: 'kg',   pricePerUnit: 190 },
-      { ingredient: 'rump steak',    unit: 'kg',   pricePerUnit: 200 },
-      { ingredient: 'beef fillet',   unit: 'kg',   pricePerUnit: 420 },
-      { ingredient: 'bacon',         unit: 'kg',   pricePerUnit: 130 },
-      { ingredient: 'sausage',       unit: 'kg',   pricePerUnit: 90  },
-      { ingredient: 'salmon',        unit: 'kg',   pricePerUnit: 280 },
-      { ingredient: 'tuna',          unit: '100g', pricePerUnit: 15  },
-      // Dairy
-      { ingredient: 'milk',          unit: 'l',    pricePerUnit: 26  },
-      { ingredient: 'cream',         unit: '100ml',pricePerUnit: 16  },
-      { ingredient: 'butter',        unit: '100g', pricePerUnit: 18  },
-      { ingredient: 'cheddar',       unit: '100g', pricePerUnit: 28  },
-      { ingredient: 'feta',          unit: '100g', pricePerUnit: 22  },
-      { ingredient: 'mozzarella',    unit: '100g', pricePerUnit: 25  },
-      { ingredient: 'parmesan',      unit: '100g', pricePerUnit: 55  },
-      { ingredient: 'yogurt',        unit: 'kg',   pricePerUnit: 65  },
-      { ingredient: 'egg',           unit: 'item', pricePerUnit: 4   },
-      { ingredient: 'sour cream',    unit: '100g', pricePerUnit: 12  },
-      // Pantry
-      { ingredient: 'olive oil',     unit: '100ml',pricePerUnit: 18  },
-      { ingredient: 'sunflower oil', unit: 'l',    pricePerUnit: 25  },
-      { ingredient: 'coconut oil',   unit: '100ml',pricePerUnit: 22  },
-      { ingredient: 'flour',         unit: 'kg',   pricePerUnit: 16  },
-      { ingredient: 'sugar',         unit: 'kg',   pricePerUnit: 18  },
-      { ingredient: 'rice',          unit: 'kg',   pricePerUnit: 18  },
-      { ingredient: 'pasta',         unit: 'kg',   pricePerUnit: 28  },
-      { ingredient: 'spaghetti',     unit: 'kg',   pricePerUnit: 28  },
-      { ingredient: 'oats',          unit: 'kg',   pricePerUnit: 38  },
-      { ingredient: 'bread',         unit: 'item', pricePerUnit: 22  },
-      { ingredient: 'honey',         unit: '100g', pricePerUnit: 16  },
-      { ingredient: 'soy sauce',     unit: '100ml',pricePerUnit: 12  },
-      { ingredient: 'tomato paste',  unit: '100g', pricePerUnit: 10  },
-      { ingredient: 'tinned tomato', unit: '100g', pricePerUnit: 5   },
-      { ingredient: 'coconut milk',  unit: '100ml',pricePerUnit: 8   },
-      { ingredient: 'stock',         unit: 'item', pricePerUnit: 8   },
-      { ingredient: 'vinegar',       unit: '100ml',pricePerUnit: 4   },
-      // Spices
-      { ingredient: 'cumin',         unit: '100g', pricePerUnit: 38  },
-      { ingredient: 'paprika',       unit: '100g', pricePerUnit: 32  },
-      { ingredient: 'turmeric',      unit: '100g', pricePerUnit: 30  },
-      { ingredient: 'cinnamon',      unit: '100g', pricePerUnit: 35  },
-      { ingredient: 'curry powder',  unit: '100g', pricePerUnit: 42  },
-      { ingredient: 'garam masala',  unit: '100g', pricePerUnit: 45  },
-      { ingredient: 'black pepper',  unit: '100g', pricePerUnit: 42  },
-      { ingredient: 'cayenne',       unit: '100g', pricePerUnit: 38  },
-      { ingredient: 'oregano',       unit: '100g', pricePerUnit: 32  },
-      { ingredient: 'thyme',         unit: '100g', pricePerUnit: 32  },
+      // ── Produce (Checkers estimates) ──────────────────────────────
+      { ingredient: 'onion',          unit: 'kg',    pricePerUnit: 20    },
+      { ingredient: 'garlic',         unit: 'item',  pricePerUnit: 4     },
+      { ingredient: 'tomato',         unit: 'kg',    pricePerUnit: 35    },
+      { ingredient: 'potato',         unit: 'kg',    pricePerUnit: 22    },
+      { ingredient: 'carrot',         unit: 'kg',    pricePerUnit: 22    },
+      { ingredient: 'capsicum',       unit: 'kg',    pricePerUnit: 55    },
+      { ingredient: 'cucumber',       unit: 'item',  pricePerUnit: 12    },
+      { ingredient: 'spinach',        unit: 'kg',    pricePerUnit: 35    },
+      { ingredient: 'mushroom',       unit: 'kg',    pricePerUnit: 80    },
+      { ingredient: 'broccoli',       unit: 'kg',    pricePerUnit: 50    },
+      { ingredient: 'avocado',        unit: 'item',  pricePerUnit: 18    },
+      { ingredient: 'lemon',          unit: 'item',  pricePerUnit: 8     },
+      { ingredient: 'lime',           unit: 'item',  pricePerUnit: 6     },
+      { ingredient: 'banana',         unit: 'kg',    pricePerUnit: 22    },
+      { ingredient: 'apple',          unit: 'kg',    pricePerUnit: 38    },
+      { ingredient: 'orange',         unit: 'kg',    pricePerUnit: 28    },
+      { ingredient: 'ginger',         unit: '100g',  pricePerUnit: 12    },
+      { ingredient: 'chilli',         unit: '100g',  pricePerUnit: 15    },
+      { ingredient: 'spring onion',   unit: 'item',  pricePerUnit: 6     },
+      { ingredient: 'sweet potato',   unit: 'kg',    pricePerUnit: 28    },
+      // ── Meat (Checkers Sixty60, 2026-06-29) ───────────────────────
+      // Beef mince lean R98.99/kg; champion R129.99/kg
+      { ingredient: 'beef mince',     unit: 'kg',    pricePerUnit: 98.99,  retailer: 'Sixty60' },
+      // Chicken breast fillets (Farmer's Choice) R84.99/kg; County Fair R59.99/kg
+      { ingredient: 'chicken breast', unit: 'kg',    pricePerUnit: 84.99,  retailer: 'Sixty60' },
+      // Deboned skinless thighs R124.99/kg; bone-in thighs R99.99/kg
+      { ingredient: 'chicken thigh',  unit: 'kg',    pricePerUnit: 99.99,  retailer: 'Sixty60' },
+      // Drums & thighs mix R79.99/kg
+      { ingredient: 'chicken',        unit: 'kg',    pricePerUnit: 79.99,  retailer: 'Sixty60' },
+      // Free-range chicken livers R29.99/250g → R12/100g
+      { ingredient: 'chicken livers', unit: '100g',  pricePerUnit: 12.00,  retailer: 'Sixty60' },
+      // Pork rashers/loin chops R129.99/kg
+      { ingredient: 'pork',           unit: 'kg',    pricePerUnit: 129.99, retailer: 'Sixty60' },
+      // Lamb braai chops / knuckle R189.99/kg
+      { ingredient: 'lamb',           unit: 'kg',    pricePerUnit: 189.99, retailer: 'Sixty60' },
+      // Rump steak R219.99/kg
+      { ingredient: 'rump steak',     unit: 'kg',    pricePerUnit: 219.99, retailer: 'Sixty60' },
+      // Stewing beef R129.99/kg
+      { ingredient: 'stewing beef',   unit: 'kg',    pricePerUnit: 129.99, retailer: 'Sixty60' },
+      { ingredient: 'beef fillet',    unit: 'kg',    pricePerUnit: 420    },
+      // Farmer's Deli back bacon R44.99/200g → R22.50/100g
+      { ingredient: 'bacon',          unit: '100g',  pricePerUnit: 22.50,  retailer: 'Sixty60' },
+      // Pork bangers R89.99/kg; beef bangers R89.99/kg
+      { ingredient: 'sausage',        unit: 'kg',    pricePerUnit: 89.99,  retailer: 'Sixty60' },
+      // Championship boerewors R119.99/kg
+      { ingredient: 'boerewors',      unit: 'kg',    pricePerUnit: 119.99, retailer: 'Sixty60' },
+      { ingredient: 'salmon',         unit: 'kg',    pricePerUnit: 280    },
+      { ingredient: 'tuna',           unit: '100g',  pricePerUnit: 15     },
+      // ── Dairy (Checkers Sixty60, 2026-06-29) ──────────────────────
+      { ingredient: 'milk',           unit: 'l',     pricePerUnit: 22.99  },
+      // Fair Cape fresh cream R25.99/250ml → R10.40/100ml
+      { ingredient: 'cream',          unit: '100ml', pricePerUnit: 10.40,  retailer: 'Sixty60' },
+      // Lurpak 200g R79.99 → R40/100g (mid: use R35 to cover cheaper brands too)
+      { ingredient: 'butter',         unit: '100g',  pricePerUnit: 35.00,  retailer: 'Sixty60' },
+      { ingredient: 'cheddar',        unit: '100g',  pricePerUnit: 28     },
+      // Leeuwenbosch feta 200g R39.99 → R20/100g
+      { ingredient: 'feta',           unit: '100g',  pricePerUnit: 20.00,  retailer: 'Sixty60' },
+      { ingredient: 'mozzarella',     unit: '100g',  pricePerUnit: 25     },
+      { ingredient: 'parmesan',       unit: '100g',  pricePerUnit: 55     },
+      // LANCEWOOD cream cheese 250g R94.99 → R38/100g
+      { ingredient: 'cream cheese',   unit: '100g',  pricePerUnit: 38.00,  retailer: 'Sixty60' },
+      // Ricotta 250g R44.99 → R18/100g
+      { ingredient: 'ricotta',        unit: '100g',  pricePerUnit: 18.00,  retailer: 'Sixty60' },
+      // LANCEWOOD buttermilk 500ml R21.99 → R4.40/100ml
+      { ingredient: 'buttermilk',     unit: '100ml', pricePerUnit: 4.40,   retailer: 'Sixty60' },
+      { ingredient: 'yogurt',         unit: 'kg',    pricePerUnit: 65     },
+      // Nulaid Large eggs 6-pack R24.99 → R4.17/egg
+      { ingredient: 'egg',            unit: 'item',  pricePerUnit: 4.17,   retailer: 'Sixty60' },
+      { ingredient: 'sour cream',     unit: '100g',  pricePerUnit: 12     },
+      // ── Pantry (Checkers estimates) ───────────────────────────────
+      { ingredient: 'olive oil',      unit: '100ml', pricePerUnit: 18     },
+      { ingredient: 'sunflower oil',  unit: 'l',     pricePerUnit: 25     },
+      { ingredient: 'coconut oil',    unit: '100ml', pricePerUnit: 22     },
+      { ingredient: 'flour',          unit: 'kg',    pricePerUnit: 16     },
+      { ingredient: 'sugar',          unit: 'kg',    pricePerUnit: 18     },
+      { ingredient: 'rice',           unit: 'kg',    pricePerUnit: 18     },
+      { ingredient: 'pasta',          unit: 'kg',    pricePerUnit: 28     },
+      { ingredient: 'spaghetti',      unit: 'kg',    pricePerUnit: 28     },
+      { ingredient: 'oats',           unit: 'kg',    pricePerUnit: 38     },
+      { ingredient: 'bread',          unit: 'item',  pricePerUnit: 22     },
+      { ingredient: 'honey',          unit: '100g',  pricePerUnit: 16     },
+      { ingredient: 'soy sauce',      unit: '100ml', pricePerUnit: 12     },
+      { ingredient: 'tomato paste',   unit: '100g',  pricePerUnit: 10     },
+      { ingredient: 'tinned tomato',  unit: '100g',  pricePerUnit: 5      },
+      { ingredient: 'coconut milk',   unit: '100ml', pricePerUnit: 8      },
+      { ingredient: 'stock',          unit: 'item',  pricePerUnit: 8      },
+      { ingredient: 'vinegar',        unit: '100ml', pricePerUnit: 4      },
+      // ── Spices (Checkers estimates) ───────────────────────────────
+      { ingredient: 'cumin',          unit: '100g',  pricePerUnit: 38     },
+      { ingredient: 'paprika',        unit: '100g',  pricePerUnit: 32     },
+      { ingredient: 'turmeric',       unit: '100g',  pricePerUnit: 30     },
+      { ingredient: 'cinnamon',       unit: '100g',  pricePerUnit: 35     },
+      { ingredient: 'curry powder',   unit: '100g',  pricePerUnit: 42     },
+      { ingredient: 'garam masala',   unit: '100g',  pricePerUnit: 45     },
+      { ingredient: 'black pepper',   unit: '100g',  pricePerUnit: 42     },
+      { ingredient: 'cayenne',        unit: '100g',  pricePerUnit: 38     },
+      { ingredient: 'oregano',        unit: '100g',  pricePerUnit: 32     },
+      { ingredient: 'thyme',          unit: '100g',  pricePerUnit: 32     },
     ];
     _db.priceBook = flat.map(f => ({
       ingredient: f.ingredient.toLowerCase().trim(),
-      prices: [{ unit: f.unit, pricePerUnit: f.pricePerUnit, retailer: '', updatedDate: d }],
+      prices: [{ unit: f.unit, pricePerUnit: f.pricePerUnit, retailer: f.retailer || '', updatedDate: d }],
     }));
     save();
   }
