@@ -1023,6 +1023,23 @@ body {
 /* Ingredient row layout */
 .ing-row { display: flex; align-items: center; gap: 6px; margin-bottom: 6px; }
 
+/* Ingredient name autocomplete */
+.ing-name-wrap { position: relative; flex: 1; min-width: 0; }
+.ing-name-wrap .ing-name-input { width: 100%; }
+.ing-name-dropdown {
+  position: absolute; top: 100%; left: 0; right: 0; z-index: 300;
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 0 0 8px 8px;
+  box-shadow: 0 6px 18px rgba(0,0,0,.15);
+  max-height: 220px; overflow-y: auto;
+}
+.ing-name-suggestion {
+  padding: 10px 12px; font-size: 0.9rem; cursor: pointer;
+  text-transform: capitalize; border-bottom: 1px solid var(--border);
+}
+.ing-name-suggestion:last-child { border-bottom: none; }
+.ing-name-suggestion:hover, .ing-name-suggestion:active { background: var(--lt-green); }
+
 /* Step row: align-items flex-start so buttons stay at top of textarea */
 .step-row { display: flex; align-items: flex-start; gap: 6px; margin-bottom: 6px; }
 

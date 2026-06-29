@@ -118,10 +118,48 @@ const Recipes = (() => {
       <input type="number" id="ing-qty-${n}" class="ing-qty-input" min="0" step="0.01"
         value="${qty != null && qty !== '' ? qty : ''}" placeholder="qty" />
       <select id="ing-unit-${n}" class="ing-unit-select">${unitOpts}</select>
-      <input type="text" id="ing-name-${n}" class="ing-name-input"
-        value="${_esc(name || '')}" placeholder="ingredient name" />
+      <div class="ing-name-wrap">
+        <input type="text" id="ing-name-${n}" class="ing-name-input"
+          value="${_esc(name || '')}" placeholder="ingredient name"
+          oninput="Recipes._ingNameInput(${n})"
+          onblur="Recipes._ingHideDropdown(${n})" />
+        <div class="ing-name-dropdown hidden" id="ing-name-dd-${n}"></div>
+      </div>
       <button type="button" class="btn-row-remove" onclick="Recipes._removeIngRow(${n})">✕</button>
     </div>`;
+  }
+
+  function _ingNameInput(n) {
+    const input = document.getElementById('ing-name-' + n);
+    const dd    = document.getElementById('ing-name-dd-' + n);
+    if (!input || !dd) return;
+    const q = input.value.trim().toLowerCase();
+    if (!q) { dd.classList.add('hidden'); dd.innerHTML = ''; return; }
+    const matches = (Data.getPriceBook() || [])
+      .map(e => e.ingredient)
+      .filter(name => name.toLowerCase().includes(q))
+      .slice(0, 8);
+    if (matches.length === 0) { dd.classList.add('hidden'); dd.innerHTML = ''; return; }
+    dd.innerHTML = matches.map(name =>
+      `<div class="ing-name-suggestion" data-val="${_esc(name)}"
+         onpointerdown="Recipes._ingNameSelect(${n},this.dataset.val)">${_esc(name)}</div>`
+    ).join('');
+    dd.classList.remove('hidden');
+  }
+
+  function _ingNameSelect(n, value) {
+    const input = document.getElementById('ing-name-' + n);
+    const dd    = document.getElementById('ing-name-dd-' + n);
+    if (input) input.value = value;
+    if (dd)    { dd.classList.add('hidden'); dd.innerHTML = ''; }
+  }
+
+  function _ingHideDropdown(n) {
+    // Delay so onpointerdown fires before blur hides the list
+    setTimeout(() => {
+      const dd = document.getElementById('ing-name-dd-' + n);
+      if (dd) { dd.classList.add('hidden'); dd.innerHTML = ''; }
+    }, 150);
   }
 
   function _renderIngRows(ingredientsStr) {
@@ -805,6 +843,6 @@ const Recipes = (() => {
            parseIngredients, setServings, openAddToPlanModal, confirmAddToPlan,
            editCalories, cancelEditCalories, saveCalories, calculateCalories,
            openCookConfirm, _cookRefresh, _cookAddExtra, confirmCook,
-           _addIngRow, _removeIngRow,
+           _addIngRow, _removeIngRow, _ingNameInput, _ingNameSelect, _ingHideDropdown,
            _addStepRow, _removeStepRow, _moveStep };
 })();
