@@ -17,6 +17,7 @@ const Recipes = (() => {
     'cloves','clove','pinch','pinches',
     'pieces','piece','slices','slice',
     'cans','can','jars','jar','bottles','bottle','bags','bag','packets','packet',
+    'bunch','bunches','head','heads','loaf','loaves','dozen',
   ];
   const UNIT_RE = UNITS.join('|');
 
@@ -372,10 +373,13 @@ const Recipes = (() => {
     if (!ings.length) return '<p class="hint" style="padding:10px">No ingredients listed.</p>';
     return `<ul class="ingredient-list">${ings.map(i => {
       const scaledQty = (parseFloat(i.qty) || 0) * (multiplier || 1);
+      const cost = i.qty ? Data.lookupPrice(i.name, scaledQty, i.unit) : null;
+      const costStr = cost !== null ? `R ${cost.toFixed(2)}` : '—';
       return `<li>
         <span class="ing-qty">${i.qty ? fmtQty(scaledQty) : ''}</span>
         <span class="ing-unit">${i.unit}</span>
         <span>${i.name}</span>
+        <span class="ing-cost">${costStr}</span>
       </li>`;
     }).join('')}</ul>`;
   }
@@ -712,7 +716,8 @@ const Recipes = (() => {
           const ingUnit = document.getElementById('ing-unit-' + n)?.value || '';
           if (!ingName) return;
           if (ingQty) {
-            parts.push(ingUnit ? `${ingQty} ${ingUnit} ${ingName}` : `${ingQty} ${ingName}`);
+            const unitStr = (ingUnit && ingUnit !== 'item') ? ingUnit : '';
+            parts.push(unitStr ? `${ingQty} ${unitStr} ${ingName}` : `${ingQty} ${ingName}`);
           } else {
             parts.push(ingName);
           }

@@ -211,11 +211,15 @@ const Planner = (() => {
 
   function showTab(tab) {
     _currentTab = tab;
-    // Update search placeholder and clear results when switching tabs
     const filterInput = document.getElementById('planner-recipe-filter');
     if (filterInput) {
       filterInput.placeholder = tab === 'treats' ? 'Search recipes to add…' : 'Filter recipes…';
       filterInput.value = '';
+    }
+    const catSelect = document.getElementById('treat-cat-filter');
+    if (catSelect) {
+      catSelect.value = '';
+      catSelect.classList.toggle('hidden', tab !== 'treats');
     }
     _recipeFilter = '';
     const resultsEl = document.getElementById('treat-search-results');
@@ -388,17 +392,24 @@ const Planner = (() => {
   function _renderTreatSearchResults(query) {
     const resultsEl = document.getElementById('treat-search-results');
     if (!resultsEl) return;
-    if (!query) {
+    const cat = (document.getElementById('treat-cat-filter')?.value || '').trim();
+    if (!query && !cat) {
       resultsEl.innerHTML = '';
       resultsEl.classList.add('hidden');
       return;
     }
     const lower = query.toLowerCase();
     const matches = Data.getRecipes()
-      .filter(r => r.name.toLowerCase().includes(lower))
+      .filter(r => {
+        if (cat && (r.category || '') !== cat) return false;
+        if (!lower) return true;
+        if (r.name.toLowerCase().includes(lower)) return true;
+        const tags = Array.isArray(r.tags) ? r.tags : (r.tags || '').split(',').map(t => t.trim()).filter(Boolean);
+        return tags.some(t => t.toLowerCase().includes(lower));
+      })
       .slice(0, 8);
     if (matches.length === 0) {
-      resultsEl.innerHTML = `<div class="treat-search-empty">No recipes match "${_esc(query)}"</div>`;
+      resultsEl.innerHTML = `<div class="treat-search-empty">No recipes match</div>`;
       resultsEl.classList.remove('hidden');
       return;
     }

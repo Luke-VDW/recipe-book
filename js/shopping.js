@@ -660,6 +660,20 @@ const Shopping = (() => {
     if (menu) menu.classList.add('hidden');
   }
 
+  function checkAll() {
+    closeActionMenu();
+    const items = Data.getShoppingList();
+    Data.setShoppingList(items.map(i => ({ ...i, checked: true })));
+    render();
+  }
+
+  function uncheckAll() {
+    closeActionMenu();
+    const items = Data.getShoppingList();
+    Data.setShoppingList(items.map(i => ({ ...i, checked: false, pantryUsed: false })));
+    render();
+  }
+
   function confirmClearChecked() {
     closeActionMenu();
     const checked = Data.getShoppingList().filter(i => i.checked || i.pantryUsed);
@@ -674,5 +688,5 @@ const Shopping = (() => {
     document.getElementById('modal-overlay').classList.remove('hidden');
   }
 
-  return { render, toggle, toggleSources, clearChecked, editPrice, savePrice, markPantryUsed, setActualPrice, openAddAdHocItem, _adhocAutocomplete, _adhocSelect, saveAdHocItem, openConfirmShop, confirmShop, setRecipeFilter, toggleRecipeFilter, _setConfirmQty, _setConfirmUnit, setActualQty, setActualUnit, toggleActionMenu, closeActionMenu, confirmClearChecked };
+  return { render, toggle, toggleSources, clearChecked, editPrice, savePrice, markPantryUsed, setActualPrice, openAddAdHocItem, _adhocAutocomplete, _adhocSelect, saveAdHocItem, openConfirmShop, confirmShop, setRecipeFilter, toggleRecipeFilter, _setConfirmQty, _setConfirmUnit, setActualQty, setActualUnit, toggleActionMenu, closeActionMenu, confirmClearChecked, checkAll, uncheckAll };
 })();
