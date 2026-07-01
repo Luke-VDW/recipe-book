@@ -132,6 +132,15 @@ body {
   gap: 8px;
   margin-bottom: 6px;
 }
+.recipe-card-meta-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0 8px;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  flex: 1;
+  min-width: 0;
+}
 .recipe-card .tags {
   margin-top: 4px; display: flex; gap: 4px; flex-wrap: wrap;
 }
@@ -184,8 +193,9 @@ body {
   display: flex; gap: 8px; flex-wrap: wrap; margin: 16px 0;
 }
 .detail-actions button, .detail-actions a {
-  flex: 1; text-align: center; min-width: 0;
+  flex: 1 1 calc(50% - 4px); text-align: center; min-width: 0; box-sizing: border-box;
 }
+.detail-action-full { flex-basis: 100% !important; }
 .servings-stepper { display: inline-flex; align-items: center; gap: 4px; }
 .stepper-btn {
   background: var(--lt-green); border: 1px solid var(--border);
@@ -290,8 +300,8 @@ body {
 .detail-kcal { font-size: 0.85rem; color: var(--text-muted); }
 
 /* ── Recipe cost estimate ── */
-.recipe-card-cost { font-size: 0.75rem; color: var(--md-green); font-weight: 600; white-space: nowrap; flex-shrink: 0; text-align: right; }
-.recipe-cost-gap { color: var(--text-muted); font-weight: 400; }
+.recipe-card-cost { font-size: 0.75rem; color: var(--md-green); font-weight: 600; white-space: nowrap; flex-shrink: 0; text-align: right; align-self: flex-start; }
+.recipe-cost-gap { display: block; color: var(--text-muted); font-weight: 400; font-size: 0.7rem; }
 .detail-cost { font-size: 0.85rem; color: var(--md-green); font-weight: 500; margin-left: auto; }
 
 /* ── MINI BUTTONS (recipe form) ── */
@@ -504,7 +514,7 @@ body {
 .form-group textarea { resize: vertical; min-height: 80px; line-height: 1.5; }
 .form-row { display: flex; gap: 8px; }
 .form-row .form-group { flex: 1; min-width: 0; }
-.modal-actions { display: flex; gap: 8px; margin-top: 16px; }
+.modal-actions { display: flex; gap: 8px; margin-top: 16px; position: sticky; bottom: 0; background: var(--surface); z-index: 1; padding-top: 8px; }
 .modal-actions button { flex: 1; padding: 12px; }
 
 /* ── TIMER ── */
@@ -905,6 +915,7 @@ body {
   color: var(--dk-green);
   white-space: nowrap;
   flex-shrink: 0;
+  margin-right: 12px;
 }
 .pantry-card-actions {
   display: flex;
@@ -1000,7 +1011,9 @@ body {
 .shop-iq-label { font-size: 0.78rem; color: var(--text-muted); flex-shrink: 0; font-weight: 600; }
 .shop-iq-input { width: 60px; padding: 4px 6px; font-size: 0.82rem; border: 1px solid var(--border); border-radius: 6px; background: var(--surface); }
 .shop-iq-unit { padding: 4px 5px; font-size: 0.8rem; border: 1px solid var(--border); border-radius: 6px; background: var(--surface); color: var(--text); }
-.shop-actual-input { width: 72px; padding: 4px 6px; font-size: 0.82rem; border: 1px solid var(--border); border-radius: 6px; }
+.shop-actual-input { width: 60px; padding: 4px 6px; font-size: 0.82rem; border: 1px solid var(--border); border-radius: 6px; }
+.shop-99-btn { background: var(--surface-alt, #f0faf4); border: 1px solid var(--border); border-radius: 6px; padding: 3px 6px; font-size: 0.75rem; font-weight: 600; cursor: pointer; color: var(--dk-green); white-space: nowrap; flex-shrink: 0; }
+.shop-99-btn:active { background: var(--lt-green); }
 
 /* Estimated price display row */
 .shop-price-row { margin-top: 3px; }

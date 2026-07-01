@@ -9,8 +9,8 @@ const PriceBook = (() => {
   let _modalIngredientName = '';
   let _modalPriceIdx = null;
 
-  const UNITS = ['g','100g','kg','ml','100ml','l','item','tsp','tbsp','clove','bunch','head','can','packet','loaf','dozen'];
-  const GRAM_EQUIV_UNITS = ['can','packet','loaf','bunch','head'];
+  const UNITS = ['g','kg','ml','l','item','tsp','tbsp','clove','head','loaf'];
+  const GRAM_EQUIV_UNITS = ['loaf','head'];
 
   function onUnitChange(selectEl) {
     const val = typeof selectEl === 'string' ? selectEl : selectEl.value;

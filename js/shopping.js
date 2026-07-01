@@ -220,7 +220,7 @@ const Shopping = (() => {
       }
     }
 
-    const iqUnits = ['g','100g','kg','ml','100ml','l','item','tsp','tbsp','clove','bunch','head','can','packet','loaf','dozen'];
+    const iqUnits = ['g','kg','ml','l','item','tsp','tbsp','clove','head','loaf'];
     const iqUnitOpts = iqUnits.map(u => `<option value="${u}"${(item.actualUnit || item.unit || 'item') === u ? ' selected' : ''}>${u}</option>`).join('');
     const qtyRow = !item.pantryUsed ? `
       <div class="shop-actual-row">
@@ -239,6 +239,7 @@ const Shopping = (() => {
             value="${item.actualPrice != null ? item.actualPrice : ''}"
             placeholder="0.00"
             onchange="Shopping.setActualPrice(${item._idx}, this.value)" />
+          <button class="shop-99-btn" onclick="Shopping.appendNineNine(${item._idx})">.99</button>
         </div>
       </div>` : '';
 
@@ -265,7 +266,7 @@ const Shopping = (() => {
     if (!item) return;
     const card = Data.lookupPriceEntry(item.name);
     const firstPrice = (card && card.prices && card.prices.length > 0) ? card.prices[0] : null;
-    const units = ['g','100g','kg','ml','100ml','l','item','tsp','tbsp','clove','bunch','head','can','packet','loaf','dozen'];
+    const units = ['g','kg','ml','l','item','tsp','tbsp','clove','head','loaf'];
     const unitOpts = units.map(u =>
       `<option value="${u}" ${(firstPrice ? firstPrice.unit : 'item') === u ? 'selected' : ''}>${u}</option>`
     ).join('');
@@ -420,7 +421,7 @@ const Shopping = (() => {
   }
 
   function openAddAdHocItem() {
-    const unitOpts = ['g','100g','kg','ml','100ml','l','item','tsp','tbsp','clove','bunch','head','can','packet','loaf','dozen']
+    const unitOpts = ['g','kg','ml','l','item','tsp','tbsp','clove','head','loaf']
       .map(u => `<option value="${u}"${u === 'item' ? ' selected' : ''}>${u}</option>`).join('');
     document.getElementById('modal-content').innerHTML = `
       <h3>Add item</h3>
@@ -526,7 +527,7 @@ const Shopping = (() => {
       }
       const confirmQty = item.actualQty != null ? item.actualQty : item.qty;
       const confirmUnit = item.actualUnit || item.unit || 'item';
-      const confUnits = ['g','100g','kg','ml','100ml','l','item','tsp','tbsp','clove','bunch','head','can','packet','loaf','dozen'];
+      const confUnits = ['g','kg','ml','l','item','tsp','tbsp','clove','head','loaf'];
       const confUnitOpts = confUnits.map(u => `<option value="${u}"${u === confirmUnit ? ' selected' : ''}>${u}</option>`).join('');
       const qtyInput = `<span class="confirm-item-qty-wrap"><input type="number" class="confirm-item-qty-input"
         id="confirm-qty-${item._origIdx}" step="0.01" min="0"
@@ -689,5 +690,13 @@ const Shopping = (() => {
     document.getElementById('modal-overlay').classList.remove('hidden');
   }
 
-  return { render, toggle, toggleSources, clearChecked, editPrice, savePrice, markPantryUsed, setActualPrice, openAddAdHocItem, _adhocAutocomplete, _adhocSelect, saveAdHocItem, openConfirmShop, confirmShop, setRecipeFilter, toggleRecipeFilter, _setConfirmQty, _setConfirmUnit, setActualQty, setActualUnit, toggleActionMenu, closeActionMenu, confirmClearChecked, checkAll, uncheckAll };
+  function appendNineNine(idx) {
+    const input = document.getElementById('shop-actual-' + idx);
+    if (!input) return;
+    const cur = input.value;
+    input.value = (cur && !cur.includes('.')) ? cur + '.99' : (cur ? cur : '0.99');
+    setActualPrice(idx, input.value);
+  }
+
+  return { render, toggle, toggleSources, clearChecked, editPrice, savePrice, markPantryUsed, setActualPrice, appendNineNine, openAddAdHocItem, _adhocAutocomplete, _adhocSelect, saveAdHocItem, openConfirmShop, confirmShop, setRecipeFilter, toggleRecipeFilter, _setConfirmQty, _setConfirmUnit, setActualQty, setActualUnit, toggleActionMenu, closeActionMenu, confirmClearChecked, checkAll, uncheckAll };
 })();

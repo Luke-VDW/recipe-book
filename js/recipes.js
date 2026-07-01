@@ -21,7 +21,7 @@ const Recipes = (() => {
   ];
   const UNIT_RE = UNITS.join('|');
 
-  const ING_UNITS = ['g','100g','kg','ml','100ml','l','item','tsp','tbsp','clove','bunch','head','can','jar','bottle','bag','packet','loaf','dozen'];
+  const ING_UNITS = ['g','kg','ml','l','item','tsp','tbsp','clove','head','loaf'];
 
   let _ingCount = 0;
   let _stepCount = 0;
@@ -351,19 +351,20 @@ const Recipes = (() => {
   function recipeCard(r) {
     const tags = (r.tags || '').split(',').map(t=>t.trim()).filter(Boolean)
       .map(t => `<span class="tag">${t}</span>`).join('');
-    const prep = r.prepMins ? `${r.prepMins}m prep` : '';
-    const cook = r.cookMins ? `${r.cookMins}m cook` : '';
-    const srv  = r.servings ? `${r.servings} servings` : '';
-    const meta = [r.category, prep, cook, srv].filter(Boolean).join(' · ');
     const cost = _calcRecipeCost(r);
     const costHtml = cost
-      ? `<div class="recipe-card-cost">${cost.partial ? '~' : ''}R ${cost.perServing.toFixed(2)}/serving${cost.partial ? '<span class="recipe-cost-gap"> · some prices missing</span>' : ''}</div>`
+      ? `<div class="recipe-card-cost">${cost.partial ? '~' : ''}R ${cost.perServing.toFixed(2)}/serving${cost.partial ? '<div class="recipe-cost-gap">some prices missing</div>' : ''}</div>`
       : '';
     return `
       <div class="recipe-card" onclick="Recipes.openDetail('${r.id}')">
         <h3>${r.name}</h3>
         <div class="recipe-card-meta-row">
-          <div class="meta">${meta}</div>
+          <div class="recipe-card-meta-grid">
+            <span>${r.category || ''}</span>
+            <span>${r.servings ? r.servings + ' srv' : ''}</span>
+            <span>${r.prepMins ? r.prepMins + 'm prep' : ''}</span>
+            <span>${r.cookMins ? r.cookMins + 'm cook' : ''}</span>
+          </div>
           ${costHtml}
         </div>
         ${tags ? `<div class="tags">${tags}</div>` : ''}
@@ -376,7 +377,8 @@ const Recipes = (() => {
     return `<ul class="ingredient-list">${ings.map(i => {
       const scaledQty = (parseFloat(i.qty) || 0) * (multiplier || 1);
       const cost = i.qty ? Data.lookupPrice(i.name, scaledQty, i.unit) : null;
-      const costStr = cost !== null ? `R ${cost.toFixed(2)}` : '—';
+      const mismatch = cost === null && i.qty ? Data.lookupPriceMismatch(i.name, scaledQty, i.unit) : false;
+      const costStr = cost !== null ? `R ${cost.toFixed(2)}` : (mismatch ? '⚖ unit' : '—');
       return `<li>
         <span class="ing-qty">${i.qty ? fmtQty(scaledQty) : ''}</span>
         <span class="ing-unit">${i.unit}</span>
@@ -430,10 +432,10 @@ const Recipes = (() => {
       ${tags ? `<div class="detail-tags">${tags}</div>` : ''}
       <div class="detail-actions">
         <button class="btn-secondary" onclick="Timer.open()">⏱ Timer</button>
-        <button class="btn-secondary" onclick="Recipes.openAddToPlanModal('${r.id}')">📅 Add to Plan</button>
-        <button class="btn-secondary" onclick="Recipes.openEditModal('${r.id}')">✏️ Edit</button>
+        <button class="btn-secondary" onclick="Recipes.openAddToPlanModal('${r.id}')">📅 Plan</button>
+        <button class="btn-secondary" onclick="Recipes.openEditModal('${r.id}')">✏ Edit</button>
         <button class="btn-danger" onclick="Recipes.confirmDelete('${r.id}')">🗑 Delete</button>
-        <button class="btn-secondary" onclick="Recipes.openCookConfirm('${r.id}')">✅ Just cooked this</button>
+        <button class="btn-secondary detail-action-full" onclick="Recipes.openCookConfirm('${r.id}')">✅ Cooked</button>
       </div>
       <div class="section-label">🥕 INGREDIENTS</div>
       <div id="detail-ingredients">${_renderIngredients(ings, 1)}</div>
@@ -498,7 +500,10 @@ const Recipes = (() => {
     const week = parseInt(document.getElementById('atp-week').value);
     const day  = document.getElementById('atp-day').value;
     const meal = document.getElementById('atp-meal').value;
-    Planner.setSlot(week, day, meal, _activeId);
+    const plan = Data.getPlan();
+    const slotVal = ((plan['week' + week] || {})[day] || {})[meal];
+    const slots = !slotVal ? [] : Array.isArray(slotVal) ? slotVal.filter(Boolean) : [slotVal];
+    Data.setMealSlot(week, day, meal, slots.length, _activeId);
     Planner.render();
     const dayLabel  = day.charAt(0).toUpperCase() + day.slice(1);
     const mealLabel = meal.charAt(0).toUpperCase() + meal.slice(1);
@@ -511,7 +516,7 @@ const Recipes = (() => {
     if (!r) return;
     _cookExtraCount = 0;
     const servings = _targetServings || r.servings || 1;
-    const unitOpts = ['g','100g','kg','ml','100ml','l','item','tsp','tbsp','clove','bunch','head','can','packet','loaf','dozen']
+    const unitOpts = ['g','kg','ml','l','item','tsp','tbsp','clove','head','loaf']
       .map(u => `<option value="${u}"${u === 'item' ? ' selected' : ''}>${u}</option>`).join('');
     document.getElementById('modal-content').innerHTML = `
       <h3>Confirm Cook — ${_esc(r.name)}</h3>
@@ -544,7 +549,7 @@ const Recipes = (() => {
     const list = document.getElementById('cook-extras-list');
     if (!list) return;
     const n = _cookExtraCount++;
-    const unitOpts = ['g','100g','kg','ml','100ml','l','item','tsp','tbsp','clove','bunch','head','can','packet','loaf','dozen']
+    const unitOpts = ['g','kg','ml','l','item','tsp','tbsp','clove','head','loaf']
       .map(u => `<option value="${u}"${u === 'item' ? ' selected' : ''}>${u}</option>`).join('');
     const row = document.createElement('div');
     row.className = 'cook-extra-row';

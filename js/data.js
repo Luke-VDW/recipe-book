@@ -447,6 +447,17 @@ const Data = (() => {
     return Math.round(baseQty * avg * 100) / 100;
   }
 
+  function lookupPriceMismatch(name, qty, unit) {
+    const card = lookupPriceEntry(name);
+    if (!card || !card.prices || card.prices.length === 0) return false;
+    const parsedQty = parseFloat(qty) || 0;
+    if (parsedQty === 0) return false;
+    const [, baseType] = normalizeToBase(parsedQty, unit || '');
+    return card.prices
+      .map(p => _pricePerBase(p.pricePerUnit, p.unit, p.gramEquiv))
+      .every(([, t]) => t !== baseType);
+  }
+
   function toggleShoppingItem(idx) {
     if (_db.shoppingList[idx]) {
       _db.shoppingList[idx].checked = !_db.shoppingList[idx].checked;
@@ -827,7 +838,7 @@ const Data = (() => {
     exportJSON, importJSON, handleImportFile, clearAll,
     loadStarterData, loadStarterPrices, getClientId, setClientId,
     getPriceBook, setPriceEntry, removePriceEntry, addIngredientEntry, removeIngredient,
-    lookupPriceEntry, lookupPrice, ensurePriceBookEntries, syncAllRecipeIngredients,
+    lookupPriceEntry, lookupPrice, lookupPriceMismatch, ensurePriceBookEntries, syncAllRecipeIngredients,
     setPantryItem, addPantryBatch, deductPantryFIFO, getFIFO, setFIFO,
     removePantryItem, clearPantryPerishables, getPantryItem,
     getSpendLog, logSpend, clearSpendLog, updateSpendEntry,
