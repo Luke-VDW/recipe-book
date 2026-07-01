@@ -220,23 +220,27 @@ const Shopping = (() => {
       }
     }
 
-    // Inline actual qty row — shown on unchecked, non-pantry-used items
     const iqUnits = ['g','100g','kg','ml','100ml','l','item','tsp','tbsp','clove','bunch','head','can','packet','loaf','dozen'];
     const iqUnitOpts = iqUnits.map(u => `<option value="${u}"${(item.actualUnit || item.unit || 'item') === u ? ' selected' : ''}>${u}</option>`).join('');
-    const inlineQtyRow = !item.pantryUsed ? `<div class="shop-inline-qty-row">
-      <span class="shop-iq-label">Actual:</span>
-      <input type="number" class="shop-iq-input" step="0.01" min="0"
-        value="${item.actualQty != null ? item.actualQty : ''}"
-        placeholder="${fmtQty(item.qty) || '?'}"
-        onchange="Shopping.setActualQty(${item._idx}, this.value)" />
-      <select class="shop-iq-unit" onchange="Shopping.setActualUnit(${item._idx}, this.value)">${iqUnitOpts}</select>
-    </div>` : '';
-
-    const actualInput = `<input type="number" class="shop-actual-input" id="shop-actual-${item._idx}"
-      step="0.01" min="0"
-      value="${item.actualPrice != null ? item.actualPrice : ''}"
-      placeholder="actual R"
-      onchange="Shopping.setActualPrice(${item._idx}, this.value)" />`;
+    const qtyRow = !item.pantryUsed ? `
+      <div class="shop-actual-row">
+        <div class="shop-iq-group">
+          <span class="shop-iq-label">Actual:</span>
+          <input type="number" class="shop-iq-input" step="0.01" min="0"
+            value="${item.actualQty != null ? item.actualQty : ''}"
+            placeholder="${fmtQty(item.qty) || '?'}"
+            onchange="Shopping.setActualQty(${item._idx}, this.value)" />
+          <select class="shop-iq-unit" onchange="Shopping.setActualUnit(${item._idx}, this.value)">${iqUnitOpts}</select>
+        </div>
+        <div class="shop-actual-price-group">
+          <span class="shop-iq-label">R</span>
+          <input type="number" class="shop-actual-input" id="shop-actual-${item._idx}"
+            step="0.01" min="0"
+            value="${item.actualPrice != null ? item.actualPrice : ''}"
+            placeholder="0.00"
+            onchange="Shopping.setActualPrice(${item._idx}, this.value)" />
+        </div>
+      </div>` : '';
 
     return `
       <div class="shop-item ${item.checked ? 'checked' : ''}" id="shop-item-${item._idx}">
@@ -248,11 +252,8 @@ const Shopping = (() => {
             ${srcBtn}
           </div>
           ${usePantryBtn}
-          ${inlineQtyRow}
-          <div class="shop-price-row">
-            ${_renderPriceDisplay(item._idx, item)}
-            <div class="shop-actual-wrap">${actualInput}</div>
-          </div>
+          ${qtyRow}
+          ${!item.pantryUsed ? `<div class="shop-price-row">${_renderPriceDisplay(item._idx, item)}</div>` : ''}
           ${sourcesHtml}
         </div>
       </div>`;

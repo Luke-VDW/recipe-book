@@ -70,10 +70,13 @@ const PriceBook = (() => {
       const priceRows = card.prices.map((p, pIdx) => {
         const retailerHtml = p.retailer
           ? `<span class="pb-retailer-tag">${_esc(p.retailer)}</span>` : '';
+        const priceLabel = (p.totalQty && p.totalQty > 1 && p.totalPrice != null)
+          ? `R ${p.totalPrice.toFixed(2)} for ${_fmtNum(p.totalQty)}${p.unit} · R ${p.pricePerUnit.toFixed(2)}/${p.unit}`
+          : `R ${p.pricePerUnit.toFixed(2)}/${p.unit}`;
         return `
           <div class="pb-price-row">
             <div class="pb-price-row-info">
-              <span class="pb-price-val">R ${p.pricePerUnit.toFixed(2)}/${p.unit}</span>
+              <span class="pb-price-val">${priceLabel}</span>
               ${retailerHtml}
               <span class="pb-price-date">${_fmtDate(p.updatedDate)}</span>
             </div>
@@ -127,12 +130,16 @@ const PriceBook = (() => {
         <input id="pb-form-ing" type="text" placeholder="e.g. beef mince" autofocus />
       </div>
       <div class="form-row">
-        <div class="form-group">
+        <div class="form-group" style="flex:1.4">
           <label>Price R (optional)</label>
           <input id="pb-form-price" type="number" step="0.01" min="0" placeholder="leave blank" />
         </div>
-        <div class="form-group">
-          <label>Per</label>
+        <div class="form-group" style="flex:0.9">
+          <label>For qty</label>
+          <input id="pb-form-qty" type="number" step="0.01" min="0.01" value="1" placeholder="1" />
+        </div>
+        <div class="form-group" style="flex:0.9">
+          <label>Unit</label>
           <select id="pb-form-unit">${unitOpts}</select>
         </div>
       </div>
@@ -150,13 +157,15 @@ const PriceBook = (() => {
   function saveNewIngredient() {
     const ingredient = (document.getElementById('pb-form-ing')?.value || '').trim().toLowerCase();
     const priceRaw = document.getElementById('pb-form-price')?.value;
-    const price = priceRaw !== '' ? parseFloat(priceRaw) : null;
+    const totalPrice = priceRaw !== '' ? parseFloat(priceRaw) : null;
+    const totalQty = parseFloat(document.getElementById('pb-form-qty')?.value) || 1;
     const unit = document.getElementById('pb-form-unit')?.value || 'item';
     const retailer = (document.getElementById('pb-form-retailer')?.value || '').trim();
     if (!ingredient) { App.toast('Enter an ingredient name', 'warn'); return; }
-    if (price !== null && (isNaN(price) || price < 0)) { App.toast('Enter a valid price', 'warn'); return; }
-    if (price !== null) {
-      Data.setPriceEntry(ingredient, { unit, pricePerUnit: price, retailer });
+    if (totalPrice !== null && (isNaN(totalPrice) || totalPrice < 0)) { App.toast('Enter a valid price', 'warn'); return; }
+    if (totalPrice !== null) {
+      const pricePerUnit = Math.round((totalPrice / totalQty) * 10000) / 10000;
+      Data.setPriceEntry(ingredient, { unit, pricePerUnit, totalPrice, totalQty, retailer });
     } else {
       Data.addIngredientEntry(ingredient);
     }
@@ -177,12 +186,16 @@ const PriceBook = (() => {
     document.getElementById('modal-content').innerHTML = `
       <h3>Add Price — <span style="text-transform:capitalize">${_esc(card.ingredient)}</span></h3>
       <div class="form-row">
-        <div class="form-group">
-          <label>Price (R)</label>
+        <div class="form-group" style="flex:1.4">
+          <label>Price R</label>
           <input id="pb-form-price" type="number" step="0.01" min="0" placeholder="0.00" autofocus />
         </div>
-        <div class="form-group">
-          <label>Per</label>
+        <div class="form-group" style="flex:0.9">
+          <label>For qty</label>
+          <input id="pb-form-qty" type="number" step="0.01" min="0.01" value="1" placeholder="1" />
+        </div>
+        <div class="form-group" style="flex:0.9">
+          <label>Unit</label>
           <select id="pb-form-unit" onchange="PriceBook.onUnitChange(this)">${unitOpts}</select>
         </div>
       </div>
@@ -215,13 +228,18 @@ const PriceBook = (() => {
     document.getElementById('modal-content').innerHTML = `
       <h3>Edit Price — <span style="text-transform:capitalize">${_esc(card.ingredient)}</span></h3>
       <div class="form-row">
-        <div class="form-group">
-          <label>Price (R)</label>
+        <div class="form-group" style="flex:1.4">
+          <label>Price R</label>
           <input id="pb-form-price" type="number" step="0.01" min="0"
-            value="${p.pricePerUnit}" autofocus />
+            value="${p.totalPrice != null ? p.totalPrice : p.pricePerUnit}" autofocus />
         </div>
-        <div class="form-group">
-          <label>Per</label>
+        <div class="form-group" style="flex:0.9">
+          <label>For qty</label>
+          <input id="pb-form-qty" type="number" step="0.01" min="0.01"
+            value="${p.totalQty || 1}" placeholder="1" />
+        </div>
+        <div class="form-group" style="flex:0.9">
+          <label>Unit</label>
           <select id="pb-form-unit" onchange="PriceBook.onUnitChange(this)">${unitOpts}</select>
         </div>
       </div>
@@ -241,15 +259,18 @@ const PriceBook = (() => {
 
   function savePrice() {
     if (!_modalIngredientName) { App.toast('No ingredient selected', 'warn'); return; }
-    const price = parseFloat(document.getElementById('pb-form-price')?.value);
+    const totalPrice = parseFloat(document.getElementById('pb-form-price')?.value);
+    const totalQty = parseFloat(document.getElementById('pb-form-qty')?.value) || 1;
     const unit = document.getElementById('pb-form-unit')?.value || 'item';
     const retailer = (document.getElementById('pb-form-retailer')?.value || '').trim();
     const gramEquiv = document.getElementById('pb-form-gramequiv')?.value || '';
-    if (isNaN(price) || price < 0) { App.toast('Enter a valid price', 'warn'); return; }
+    if (isNaN(totalPrice) || totalPrice < 0) { App.toast('Enter a valid price', 'warn'); return; }
+    if (isNaN(totalQty) || totalQty <= 0) { App.toast('Enter a valid quantity', 'warn'); return; }
+    const pricePerUnit = Math.round((totalPrice / totalQty) * 10000) / 10000;
     if (_modalPriceIdx !== null) {
       Data.removePriceEntry(_modalIngredientName, _modalPriceIdx);
     }
-    Data.setPriceEntry(_modalIngredientName, { unit, pricePerUnit: price, retailer, gramEquiv });
+    Data.setPriceEntry(_modalIngredientName, { unit, pricePerUnit, totalPrice, totalQty, retailer, gramEquiv });
     App.closeModal();
     render();
     App.toast('Price saved ✓');
@@ -282,6 +303,12 @@ const PriceBook = (() => {
 
   function _esc(s) {
     return (s || '').replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  }
+
+  function _fmtNum(n) {
+    const f = parseFloat(n);
+    if (isNaN(f)) return '';
+    return f % 1 === 0 ? String(f) : f.toFixed(2).replace(/\.?0+$/, '');
   }
 
   return { render, filter, sort, toggleOrphans, openAddIngredientForm, saveNewIngredient, openAddPriceForm, openEditPriceForm, savePrice, removePrice, removeIngredient, onUnitChange };

@@ -362,9 +362,11 @@ const Recipes = (() => {
     return `
       <div class="recipe-card" onclick="Recipes.openDetail('${r.id}')">
         <h3>${r.name}</h3>
-        <div class="meta">${meta}</div>
+        <div class="recipe-card-meta-row">
+          <div class="meta">${meta}</div>
+          ${costHtml}
+        </div>
         ${tags ? `<div class="tags">${tags}</div>` : ''}
-        ${costHtml}
       </div>`;
   }
 

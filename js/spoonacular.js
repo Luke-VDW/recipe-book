@@ -33,6 +33,14 @@ const Importer = (() => {
     return Math.round(q * 8) / 8;
   }
 
+  function _esc(s) {
+    return (s || '').replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  }
+
+  function _stripHtml(html) {
+    return (html || '').replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim();
+  }
+
   async function search() {
     const key = getKey();
     const notice = document.getElementById('import-key-notice');
@@ -50,7 +58,7 @@ const Importer = (() => {
 
     try {
       const res = await fetch(
-        `${BASE}/recipes/complexSearch?query=${encodeURIComponent(q)}&number=10&addRecipeInformation=false&apiKey=${key}`
+        `${BASE}/recipes/complexSearch?query=${encodeURIComponent(q)}&number=10&addRecipeInformation=true&apiKey=${key}`
       );
       if (!res.ok) throw new Error('API error ' + res.status);
       const data = await res.json();
@@ -61,16 +69,25 @@ const Importer = (() => {
         return;
       }
 
-      resultsEl.innerHTML = data.results.map(r => `
-        <div class="import-card">
-          ${r.image ? `<img src="${r.image}" alt="${r.title}" loading="lazy" />` : ''}
-          <div class="import-card-body">
-            <h4>${r.title}</h4>
-            <div class="meta">${r.readyInMinutes ? `⏱ ${r.readyInMinutes}m` : ''} ${r.servings ? `· ${r.servings} servings` : ''}</div>
-            <button class="btn-primary" onclick="Importer.importRecipe(${r.id}, '${r.title.replace(/'/g,"\\'")}')">＋ Import</button>
-          </div>
-        </div>`
-      ).join('');
+      resultsEl.innerHTML = data.results.map(r => {
+        const rawSummary = _stripHtml(r.summary || '');
+        const summary = rawSummary.length > 160 ? rawSummary.substring(0, 157) + '…' : rawSummary;
+        const tags = [...(r.cuisines || []), ...(r.diets || [])]
+          .slice(0, 4)
+          .map(t => `<span class="import-tag">${_esc(t)}</span>`)
+          .join('');
+        return `
+          <div class="import-card">
+            ${r.image ? `<img src="${_esc(r.image)}" alt="${_esc(r.title)}" loading="lazy" />` : ''}
+            <div class="import-card-body">
+              <h4>${_esc(r.title)}</h4>
+              <div class="meta">${r.readyInMinutes ? `⏱ ${r.readyInMinutes}m` : ''} ${r.servings ? `· ${r.servings} servings` : ''}</div>
+              ${summary ? `<div class="import-summary">${_esc(summary)}</div>` : ''}
+              ${tags ? `<div class="import-tags">${tags}</div>` : ''}
+              <button class="btn-primary" onclick="Importer.importRecipe(${r.id}, '${r.title.replace(/'/g,"\\'")}')">＋ Import</button>
+            </div>
+          </div>`;
+      }).join('');
     } catch(err) {
       resultsEl.innerHTML = `<div class="empty-state">Error: ${err.message}</div>`;
     }
