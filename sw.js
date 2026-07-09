@@ -3,7 +3,7 @@
    Caches app shell for offline use.
    ══════════════════════════════════════ */
 
-const CACHE = 'recipebook-v1';
+const CACHE = 'recipebook-v2';
 const SHELL = [
   './',
   './index.html',
@@ -15,6 +15,9 @@ const SHELL = [
   './js/planner.js',
   './js/shopping.js',
   './js/spoonacular.js',
+  './js/prices.js',
+  './js/pantry.js',
+  './js/analytics.js',
 ];
 
 self.addEventListener('install', e => {
