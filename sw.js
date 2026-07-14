@@ -3,7 +3,7 @@
    Caches app shell for offline use.
    ══════════════════════════════════════ */
 
-const CACHE = 'recipebook-v3';
+const CACHE = 'recipebook-v4';
 const SHELL = [
   './',
   './index.html',

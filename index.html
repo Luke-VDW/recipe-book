@@ -91,6 +91,12 @@
         <div id="treat-search-results" class="treat-search-results hidden"></div>
       </div>
       <div id="planner-grid"></div>
+      <!-- Bottom-left week-plan menu -->
+      <div id="planner-action-menu" class="fab-menu-left hidden">
+        <button class="fab-menu-item" onclick="Planner.closeActionMenu(); Planner.openSaveWeekModal()">💾 Save this week's plan</button>
+        <button class="fab-menu-item" onclick="Planner.closeActionMenu(); Planner.openSavedPlansModal()">📂 Saved week plans</button>
+      </div>
+      <button class="fab fab-left" onclick="Planner.toggleActionMenu()" title="Week plans">☰</button>
       <button class="fab" onclick="Planner.generateShoppingList()" title="Generate shopping list">🛒</button>
     </section>
 

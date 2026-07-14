@@ -150,7 +150,10 @@ const Shopping = (() => {
       const p = card.prices[0];
       const retailerHtml = p.retailer
         ? ` <span class="shop-price-retailer-tag">${_esc(p.retailer)}</span>` : '';
-      perHtml = `<span class="shop-price-per">R ${p.pricePerUnit.toFixed(2)}/${p.unit}</span>${retailerHtml}`;
+      const perLabel = (p.totalQty && p.totalQty > 1 && p.totalPrice != null)
+        ? `R ${p.totalPrice.toFixed(2)}/${fmtQty(p.totalQty)}${p.unit}`
+        : `R ${p.pricePerUnit.toFixed(2)}/${p.unit}`;
+      perHtml = `<span class="shop-price-per">${perLabel}</span>${retailerHtml}`;
     }
     return `<div class="shop-price-display" id="shop-price-${idx}">
       ${costHtml}${perHtml}
@@ -562,7 +565,8 @@ const Shopping = (() => {
     <h3>Confirm Shop</h3>
     <div class="form-group">
       <label>Store</label>
-      <input type="text" id="confirm-retailer" placeholder="e.g. Woolworths" maxlength="30" />
+      ${App.retailerChipsHtml('confirm-retailer')}
+      <input type="text" id="confirm-retailer" placeholder="Store name…" maxlength="30" />
     </div>
     ${bought.length > 0 ? `<div class="confirm-section-title">Purchased (${bought.length})</div>${boughtRows}` : ''}
     ${pantryItems.length > 0 ? `<div class="confirm-section-title">From pantry (${pantryItems.length})</div>${pantryRows}` : ''}

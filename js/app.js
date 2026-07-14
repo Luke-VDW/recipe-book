@@ -285,7 +285,27 @@ const App = (() => {
     if (menu) menu.classList.add('hidden');
   }
 
-  return { init, nav, pushView, goBack, closeModal, refresh, toast, toggleFabMenu, closeFabMenu };
+  // ── Retailer quick-select chips ─────
+  const RETAILERS = ['Pick n Pay', 'Checkers', 'Woolworths', 'Food Lovers', 'Spar'];
+
+  function retailerChipsHtml(inputId, current) {
+    const chips = RETAILERS.map(r =>
+      `<button type="button" class="retailer-chip${current === r ? ' active' : ''}" data-val="${r}" onclick="App.pickRetailer(this,'${inputId}')">${r}</button>`
+    ).join('');
+    const otherActive = current && !RETAILERS.includes(current);
+    return `<div class="retailer-chips">${chips}<button type="button" class="retailer-chip${otherActive ? ' active' : ''}" data-val="" onclick="App.pickRetailer(this,'${inputId}')">Other…</button></div>`;
+  }
+
+  function pickRetailer(chipEl, inputId) {
+    const input = document.getElementById(inputId);
+    if (!input) return;
+    input.value = chipEl.dataset.val || '';
+    chipEl.parentElement.querySelectorAll('.retailer-chip').forEach(c =>
+      c.classList.toggle('active', c === chipEl));
+    if (!chipEl.dataset.val) input.focus();
+  }
+
+  return { init, nav, pushView, goBack, closeModal, refresh, toast, toggleFabMenu, closeFabMenu, retailerChipsHtml, pickRetailer };
 })();
 
 // ── Boot ──────────────────────────────

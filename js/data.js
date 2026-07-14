@@ -16,6 +16,7 @@ const Data = (() => {
     priceBook: [],
     spendLog: [],
     cookLog: [],
+    savedWeekPlans: [],
   };
 
   const DAYS = ['monday','tuesday','wednesday','thursday','friday','saturday','sunday'];
@@ -193,9 +194,43 @@ const Data = (() => {
     save();
   }
 
+  function deleteSpendEntry(idx) {
+    if (!_db.spendLog || !_db.spendLog[idx]) return;
+    _db.spendLog.splice(idx, 1);
+    save();
+  }
+
   function clearSpendLog() {
     _db.spendLog = [];
     save();
+  }
+
+  // ── Saved week plans ────────────────
+  function getSavedWeekPlans() { return _db.savedWeekPlans || []; }
+
+  function saveWeekPlan(name, weekNum) {
+    if (!_db.savedWeekPlans) _db.savedWeekPlans = [];
+    const wk = _db.mealPlan['week' + weekNum] || {};
+    _db.savedWeekPlans.push({
+      id: 'wp_' + Date.now(),
+      name,
+      savedDate: new Date().toISOString().slice(0, 10),
+      plan: JSON.parse(JSON.stringify(wk)),
+    });
+    save();
+  }
+
+  function deleteSavedWeekPlan(id) {
+    _db.savedWeekPlans = (_db.savedWeekPlans || []).filter(p => p.id !== id);
+    save();
+  }
+
+  function applySavedWeekPlan(id, weekNum) {
+    const saved = (_db.savedWeekPlans || []).find(p => p.id === id);
+    if (!saved) return false;
+    _db.mealPlan['week' + weekNum] = JSON.parse(JSON.stringify(saved.plan));
+    save();
+    return true;
   }
 
   function getShoppingList(){ return _db.shoppingList || []; }
@@ -630,6 +665,12 @@ const Data = (() => {
     return _db.cookLog || [];
   }
 
+  function deleteCookEntry(idx) {
+    if (!_db.cookLog || !_db.cookLog[idx]) return;
+    _db.cookLog.splice(idx, 1);
+    save();
+  }
+
   function logCook(entry) {
     if (!_db.cookLog) _db.cookLog = [];
     _db.cookLog.push({
@@ -841,8 +882,9 @@ const Data = (() => {
     lookupPriceEntry, lookupPrice, lookupPriceMismatch, ensurePriceBookEntries, syncAllRecipeIngredients,
     setPantryItem, addPantryBatch, deductPantryFIFO, getFIFO, setFIFO,
     removePantryItem, clearPantryPerishables, getPantryItem,
-    getSpendLog, logSpend, clearSpendLog, updateSpendEntry,
-    getCookLog, logCook,
+    getSpendLog, logSpend, clearSpendLog, updateSpendEntry, deleteSpendEntry,
+    getCookLog, logCook, deleteCookEntry,
+    getSavedWeekPlans, saveWeekPlan, deleteSavedWeekPlan, applySavedWeekPlan,
     normalizeToBase,
     DAYS, MEALS,
   };

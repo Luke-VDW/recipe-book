@@ -1306,6 +1306,38 @@ input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; marg
 .confirm-item-qty-wrap { display: inline-flex; align-items: center; gap: 4px; }
 .confirm-item-unit { font-size: 0.85rem; color: var(--text-muted); }
 
+/* ── Retailer quick-select chips ── */
+.retailer-chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 2px 0 4px; }
+.retailer-chip {
+  border: 1px solid var(--border); background: var(--surface);
+  border-radius: 999px; padding: 4px 11px; font-size: .78rem; font-weight: 600;
+  cursor: pointer; color: var(--text-muted); white-space: nowrap;
+  transition: background .15s, color .15s, border-color .15s;
+}
+.retailer-chip.active { background: var(--dk-green); color: #fff; border-color: var(--dk-green); }
+
+/* ── Cook confirm: pantry deduction opt-out ── */
+.cook-deduct-cb { width: 17px; height: 17px; accent-color: var(--dk-green); flex-shrink: 0; }
+
+/* ── Ingredient book: secondary per-unit rate ── */
+.pb-price-per-unit { color: var(--text-muted); font-weight: 400; font-size: 0.78rem; }
+
+/* ── Saved week plans ── */
+.wp-row {
+  display: flex; flex-direction: column; gap: 6px;
+  padding: 10px 0; border-bottom: 1px solid var(--border);
+}
+.wp-row:last-of-type { border-bottom: none; }
+.wp-row-info { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.wp-row-name { font-weight: 700; font-size: 0.92rem; color: var(--dk-green); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.wp-row-meta { font-size: 0.75rem; color: var(--text-muted); white-space: nowrap; flex-shrink: 0; }
+.wp-row-actions { display: flex; align-items: center; gap: 6px; }
+.wp-week-select {
+  flex: 1; padding: 5px 8px; font-size: 0.85rem;
+  border: 1px solid var(--border); border-radius: var(--radius-sm);
+  background: var(--surface); color: var(--text); outline: none;
+}
+
 /* ── Pantry: batch list (Sub-project F) ── */
 .pantry-batch-list {
   margin-top: 4px;

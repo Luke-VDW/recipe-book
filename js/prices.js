@@ -71,7 +71,7 @@ const PriceBook = (() => {
         const retailerHtml = p.retailer
           ? `<span class="pb-retailer-tag">${_esc(p.retailer)}</span>` : '';
         const priceLabel = (p.totalQty && p.totalQty > 1 && p.totalPrice != null)
-          ? `R ${p.totalPrice.toFixed(2)} for ${_fmtNum(p.totalQty)}${p.unit} · R ${p.pricePerUnit.toFixed(2)}/${p.unit}`
+          ? `R ${p.totalPrice.toFixed(2)}/${_fmtNum(p.totalQty)}${p.unit} <span class="pb-price-per-unit">· R ${p.pricePerUnit.toFixed(2)}/${p.unit}</span>`
           : `R ${p.pricePerUnit.toFixed(2)}/${p.unit}`;
         return `
           <div class="pb-price-row">
@@ -145,7 +145,8 @@ const PriceBook = (() => {
       </div>
       <div class="form-group">
         <label>Retailer (optional)</label>
-        <input id="pb-form-retailer" type="text" placeholder="e.g. Checkers" maxlength="30" />
+        ${App.retailerChipsHtml('pb-form-retailer')}
+        <input id="pb-form-retailer" type="text" placeholder="Store name…" maxlength="30" />
       </div>
       <div class="modal-actions">
         <button class="btn-secondary" onclick="App.closeModal()">Cancel</button>
@@ -204,7 +205,8 @@ const PriceBook = (() => {
       </div>
       <div class="form-group">
         <label>Retailer (optional)</label>
-        <input id="pb-form-retailer" type="text" placeholder="e.g. Checkers" maxlength="30" />
+        ${App.retailerChipsHtml('pb-form-retailer')}
+        <input id="pb-form-retailer" type="text" placeholder="Store name…" maxlength="30" />
       </div>
       <div class="modal-actions">
         <button class="btn-secondary" onclick="App.closeModal()">Cancel</button>
@@ -248,6 +250,7 @@ const PriceBook = (() => {
       </div>
       <div class="form-group">
         <label>Retailer (optional)</label>
+        ${App.retailerChipsHtml('pb-form-retailer', p.retailer || '')}
         <input id="pb-form-retailer" type="text" value="${_esc(p.retailer || '')}" maxlength="30" />
       </div>
       <div class="modal-actions">

@@ -66,7 +66,7 @@ const Analytics = (() => {
 
   function _buildCookSection() {
     const cookLog = Data.getCookLog();
-    const recentCooks = cookLog.slice().reverse().slice(0, 10);
+    const recentCooks = cookLog.map((e, i) => ({ ...e, _realIdx: i })).reverse().slice(0, 10);
     const rows = recentCooks.length === 0
       ? '<p class="analytics-empty-sub">No cooks logged yet. Use "Just cooked this" on any recipe.</p>'
       : recentCooks.map(entry => `
@@ -74,8 +74,18 @@ const Analytics = (() => {
             <span class="analytics-cook-date">${_fmtDate(entry.date)}</span>
             <span class="analytics-cook-name">${_esc(entry.recipeName)}</span>
             <span class="analytics-cook-servings">${entry.servings} serving${entry.servings !== 1 ? 's' : ''}</span>
+            <button class="btn-mini btn-danger-mini" onclick="Analytics.deleteCook(${entry._realIdx})" title="Delete entry">✕</button>
           </div>`).join('');
     return `<div class="analytics-section-title">Recent Cooks</div>${rows}`;
+  }
+
+  function deleteCook(realIdx) {
+    const entry = Data.getCookLog()[realIdx];
+    if (!entry) return;
+    if (!confirm(`Delete "${entry.recipeName}" from the cook log? Pantry stock is not restored.`)) return;
+    Data.deleteCookEntry(realIdx);
+    render();
+    App.toast('Cook entry deleted');
   }
 
   function render() {
@@ -136,10 +146,15 @@ const Analytics = (() => {
     // ── Category breakdown (current month) ─────────
     const catTotals = {};
     log.filter(e => e.date.slice(0, 7) === monthKey).forEach(e => {
+      let itemSum = 0;
       (e.items || []).forEach(item => {
         const cat = _guessCategory(item.name);
         catTotals[cat] = (catTotals[cat] || 0) + item.cost;
+        itemSum += item.cost || 0;
       });
+      // Total was overridden above the item sum (e.g. non-food extras) → count surplus as Other
+      const surplus = (e.total || 0) - itemSum;
+      if (surplus > 0.009) catTotals['Other'] = (catTotals['Other'] || 0) + surplus;
     });
     const catEntries = Object.entries(catTotals).sort((a, b) => b[1] - a[1]);
     const maxCat = catEntries.length > 0 ? catEntries[0][1] : 1;
@@ -156,14 +171,20 @@ const Analytics = (() => {
         const estBadge = item.estimated ? `<span class="shop-est-badge">~est</span>` : '';
         return `<div>${_esc(item.name)} × ${item.qty || ''} ${_esc(item.unit || '')} — ${_fmtR(item.cost)} ${estBadge}</div>`;
       }).join('');
+      const itemSum = (entry.items || []).reduce((s, i) => s + (i.cost || 0), 0);
+      const surplus = (entry.total || 0) - itemSum;
+      const surplusRow = surplus > 0.009
+        ? `<div style="color:var(--text-muted);font-style:italic">Other (non-itemised) — ${_fmtR(surplus)}</div>`
+        : '';
       return `
         <div class="analytics-shop-row">
           <div class="analytics-shop-header">
             <span class="analytics-shop-date" style="cursor:pointer" onclick="this.closest('.analytics-shop-row').querySelector('.analytics-shop-detail').classList.toggle('open')">${_fmtDate(entry.date)}${retailerTag}</span>
             <span class="analytics-shop-total">${_fmtR(entry.total)}</span>
             <button class="btn-mini" onclick="event.stopPropagation();Analytics.editSpendEntry(${entry._realIdx})">Edit</button>
+            <button class="btn-mini btn-danger-mini" onclick="event.stopPropagation();Analytics.deleteSpendEntry(${entry._realIdx})" title="Delete shop">✕</button>
           </div>
-          <div class="analytics-shop-detail">${detailRows}</div>
+          <div class="analytics-shop-detail">${detailRows}${surplusRow}</div>
         </div>`;
     }).join('');
 
@@ -180,6 +201,15 @@ const Analytics = (() => {
     Data.clearSpendLog();
     render();
     App.toast('Spend log cleared');
+  }
+
+  function deleteSpendEntry(realIdx) {
+    const entry = Data.getSpendLog()[realIdx];
+    if (!entry) return;
+    if (!confirm(`Delete the shop from ${_fmtDate(entry.date)} (${_fmtR(entry.total)})? This cannot be undone.`)) return;
+    Data.deleteSpendEntry(realIdx);
+    render();
+    App.toast('Shop deleted');
   }
 
   function editSpendEntry(realIdx) {
@@ -204,6 +234,7 @@ const Analytics = (() => {
       <h3>Edit Shop — ${_fmtDate(entry.date)}</h3>
       <div class="form-group">
         <label>Store</label>
+        ${App.retailerChipsHtml('edit-retailer', entry.retailer || '')}
         <input type="text" id="edit-retailer" value="${_esc(entry.retailer || '')}" maxlength="30" />
       </div>
       ${itemRows}
@@ -252,5 +283,5 @@ const Analytics = (() => {
     App.toast('Shop updated ✓');
   }
 
-  return { render, clearLog, editSpendEntry, saveSpendEntry };
+  return { render, clearLog, editSpendEntry, saveSpendEntry, deleteSpendEntry, deleteCook };
 })();

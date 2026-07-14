@@ -606,7 +606,117 @@ const Planner = (() => {
     Shopping.render();
   }
 
+  // ── Saved week plans ─────────────────
+  function toggleActionMenu() {
+    const menu = document.getElementById('planner-action-menu');
+    if (menu) menu.classList.toggle('hidden');
+  }
+
+  function closeActionMenu() {
+    const menu = document.getElementById('planner-action-menu');
+    if (menu) menu.classList.add('hidden');
+  }
+
+  function _planMealCount(plan) {
+    let count = 0;
+    Data.DAYS.forEach(d => {
+      Data.MEALS.forEach(m => {
+        count += _normSlot(((plan || {})[d] || {})[m]).length;
+      });
+    });
+    return count;
+  }
+
+  function openSaveWeekModal() {
+    const wk = (Data.getPlan())['week' + _currentWeek] || {};
+    const mealCount = _planMealCount(wk);
+    if (mealCount === 0) {
+      App.toast(`Week ${_currentWeek} has no meals planned yet`, 'warn');
+      return;
+    }
+    document.getElementById('modal-content').innerHTML = `
+      <h3>💾 Save Week ${_currentWeek} Plan</h3>
+      <p class="hint" style="margin:0 0 10px">Saves the ${mealCount} meal${mealCount !== 1 ? 's' : ''} currently planned in Week ${_currentWeek} as a reusable template.</p>
+      <div class="form-group">
+        <label>Plan name</label>
+        <input type="text" id="wp-name" placeholder="e.g. Gym week, Budget week…" maxlength="40" autofocus />
+      </div>
+      <div class="modal-actions">
+        <button class="btn-secondary" onclick="App.closeModal()">Cancel</button>
+        <button class="btn-primary" onclick="Planner.confirmSaveWeek()">Save plan</button>
+      </div>`;
+    document.getElementById('modal-overlay').classList.remove('hidden');
+    document.getElementById('wp-name')?.focus();
+  }
+
+  function confirmSaveWeek() {
+    const name = (document.getElementById('wp-name')?.value || '').trim();
+    if (!name) { App.toast('Give the plan a name', 'warn'); return; }
+    Data.saveWeekPlan(name, _currentWeek);
+    App.closeModal();
+    App.toast(`"${name}" saved ✓`);
+  }
+
+  function openSavedPlansModal() {
+    const plans = Data.getSavedWeekPlans();
+    if (plans.length === 0) {
+      document.getElementById('modal-content').innerHTML = `
+        <h3>📂 Saved Week Plans</h3>
+        <div class="empty-state" style="padding:24px 10px"><span class="emoji">🗓</span>No saved plans yet.<br>Save the week you're viewing via the ☰ menu.</div>
+        <div class="modal-actions">
+          <button class="btn-secondary" onclick="App.closeModal()">Close</button>
+        </div>`;
+      document.getElementById('modal-overlay').classList.remove('hidden');
+      return;
+    }
+    const weekOpts = [1, 2, 3, 4].map(w =>
+      `<option value="${w}" ${w === _currentWeek ? 'selected' : ''}>Week ${w}</option>`).join('');
+    const rows = plans.map(p => `
+      <div class="wp-row">
+        <div class="wp-row-info">
+          <span class="wp-row-name">${_esc(p.name)}</span>
+          <span class="wp-row-meta">${_planMealCount(p.plan)} meals · saved ${p.savedDate}</span>
+        </div>
+        <div class="wp-row-actions">
+          <select id="apply-week-${p.id}" class="wp-week-select">${weekOpts}</select>
+          <button class="btn-mini btn-mini-primary" onclick="Planner.applySavedPlan('${p.id}')">Apply</button>
+          <button class="btn-mini btn-danger-mini" onclick="Planner.deleteSavedPlan('${p.id}')">✕</button>
+        </div>
+      </div>`).join('');
+    document.getElementById('modal-content').innerHTML = `
+      <h3>📂 Saved Week Plans</h3>
+      <p class="hint" style="margin:0 0 10px">Applying a plan replaces all meals in the chosen week.</p>
+      ${rows}
+      <div class="modal-actions">
+        <button class="btn-secondary" onclick="App.closeModal()">Close</button>
+      </div>`;
+    document.getElementById('modal-overlay').classList.remove('hidden');
+  }
+
+  function applySavedPlan(id) {
+    const plan = Data.getSavedWeekPlans().find(p => p.id === id);
+    if (!plan) return;
+    const weekNum = parseInt(document.getElementById('apply-week-' + id)?.value) || _currentWeek;
+    if (!confirm(`Replace all meals in Week ${weekNum} with "${plan.name}"?`)) return;
+    Data.applySavedWeekPlan(id, weekNum);
+    _pendingSlots = {};
+    App.closeModal();
+    render();
+    App.toast(`"${plan.name}" applied to Week ${weekNum} ✓`);
+  }
+
+  function deleteSavedPlan(id) {
+    const plan = Data.getSavedWeekPlans().find(p => p.id === id);
+    if (!plan) return;
+    if (!confirm(`Delete saved plan "${plan.name}"?`)) return;
+    Data.deleteSavedWeekPlan(id);
+    openSavedPlansModal(); // re-render the list in place
+    App.toast('Plan deleted');
+  }
+
   return { render, showWeek, showTab, setSlot, addMealRecipe, removeMealRecipe,
            generateShoppingList, filterRecipes,
-           openAddTreatModal, confirmAddTreat, removeTreat, updateTreatBatches, addTreatDirect };
+           openAddTreatModal, confirmAddTreat, removeTreat, updateTreatBatches, addTreatDirect,
+           toggleActionMenu, closeActionMenu, openSaveWeekModal, confirmSaveWeek,
+           openSavedPlansModal, applySavedPlan, deleteSavedPlan };
 })();

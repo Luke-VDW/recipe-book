@@ -236,6 +236,7 @@ const Recipes = (() => {
       if (pBase >= dBase) {
         const remain = _convertFromBase(pBase - dBase, pBaseUnit, p.unit);
         return `<div class="cook-ing-row cook-ing-normal">
+        <input type="checkbox" id="cook-deduct-${i}" class="cook-deduct-cb" checked title="Untick to skip pantry deduction" />
         <span class="cook-ing-name">${_esc(ing.name)}</span>
         <span class="cook-ing-qty">${fmtQty(scaledQty)} ${_esc(ing.unit || '')}</span>
         <span class="cook-ing-status">→ ${fmtQty(remain.qty)} ${_esc(remain.unit)} left</span>
@@ -244,6 +245,7 @@ const Recipes = (() => {
 
       // Shortfall
       return `<div class="cook-ing-row cook-ing-shortfall">
+      <input type="checkbox" id="cook-deduct-${i}" class="cook-deduct-cb" checked title="Untick to skip pantry deduction" />
       <span class="cook-ing-name">${_esc(ing.name)}</span>
       <span class="cook-ing-qty">${fmtQty(scaledQty)} ${_esc(ing.unit || '')} needed</span>
       <div class="cook-shortfall-row">
@@ -527,6 +529,7 @@ const Recipes = (() => {
           onchange="Recipes._cookRefresh('${_esc(id)}', this.value)" />
         <span style="font-size:0.82rem;color:var(--text-muted)">(recipe base: ${r.servings || 1})</span>
       </div>
+      <p class="hint" style="margin:0 0 6px">Untick any ingredient you didn't use — it won't be deducted from the pantry.</p>
       <div id="cook-ing-rows">${_buildIngRows(r, servings)}</div>
       <div class="cook-extras-title">Extra ingredients used</div>
       <div id="cook-extras-list"></div>
@@ -575,6 +578,8 @@ const Recipes = (() => {
 
     parseIngredients(r.ingredients).forEach((ing, i) => {
       if (!ing.qty && ing.qty !== 0) return;
+      const deductCb = document.getElementById('cook-deduct-' + i);
+      if (deductCb && !deductCb.checked) return; // user opted this ingredient out
       _deductIngredient(ing.name, (parseFloat(ing.qty) || 0) * mult, ing.unit || '', i);
     });
 
