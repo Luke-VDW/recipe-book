@@ -703,6 +703,24 @@ const Recipes = (() => {
     document.getElementById('modal-overlay').classList.remove('hidden');
   }
 
+  function _collectIngredients() {
+    const parts = [];
+    document.querySelectorAll('#rf-ing-list .ing-row').forEach(row => {
+      const n = row.id.replace('ing-row-', '');
+      const ingName = (document.getElementById('ing-name-' + n)?.value || '').trim();
+      const ingQty  = (document.getElementById('ing-qty-' + n)?.value || '').trim();
+      const ingUnit = document.getElementById('ing-unit-' + n)?.value || '';
+      if (!ingName) return;
+      if (ingQty) {
+        const unitStr = (ingUnit && ingUnit !== 'item') ? ingUnit : '';
+        parts.push(unitStr ? `${ingQty} ${unitStr} ${ingName}` : `${ingQty} ${ingName}`);
+      } else {
+        parts.push(ingName);
+      }
+    });
+    return parts.join('; ');
+  }
+
   function saveModal(existingId) {
     const name = document.getElementById('rf-name').value.trim();
     if (!name) { alert('Please enter a recipe name.'); return; }
@@ -714,23 +732,7 @@ const Recipes = (() => {
       servings: parseInt(document.getElementById('rf-srv').value) || 2,
       prepMins: parseInt(document.getElementById('rf-prep').value) || 0,
       cookMins: parseInt(document.getElementById('rf-cook').value) || 0,
-      ingredients: (() => {
-        const parts = [];
-        document.querySelectorAll('#rf-ing-list .ing-row').forEach(row => {
-          const n = row.id.replace('ing-row-', '');
-          const ingName = (document.getElementById('ing-name-' + n)?.value || '').trim();
-          const ingQty  = (document.getElementById('ing-qty-' + n)?.value || '').trim();
-          const ingUnit = document.getElementById('ing-unit-' + n)?.value || '';
-          if (!ingName) return;
-          if (ingQty) {
-            const unitStr = (ingUnit && ingUnit !== 'item') ? ingUnit : '';
-            parts.push(unitStr ? `${ingQty} ${unitStr} ${ingName}` : `${ingQty} ${ingName}`);
-          } else {
-            parts.push(ingName);
-          }
-        });
-        return parts.join('; ');
-      })(),
+      ingredients: _collectIngredients(),
       method: (() => {
         const parts = [];
         document.querySelectorAll('#rf-step-list .step-row').forEach(row => {
@@ -805,7 +807,7 @@ const Recipes = (() => {
   }
 
   async function calculateCalories() {
-    const ingredientsText = (document.getElementById('rf-ing')?.value || '').trim();
+    const ingredientsText = _collectIngredients().trim();
     if (!ingredientsText) { App.toast('Add ingredients first.', 'warn'); return; }
     const apiKey = localStorage.getItem('rb_spoon_key');
     if (!apiKey) { App.toast('No Spoonacular key — go to Settings to add one.', 'warn'); return; }
