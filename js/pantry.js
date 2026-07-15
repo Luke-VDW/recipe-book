@@ -89,7 +89,11 @@ const Pantry = (() => {
       <h3>Add to Pantry</h3>
       <div class="form-group">
         <label>Ingredient</label>
-        <input id="pantry-form-ing" type="text" placeholder="e.g. onion" autofocus />
+        <div style="position:relative">
+          <input id="pantry-form-ing" type="text" placeholder="e.g. onion" autocomplete="off" autofocus
+            oninput="Pantry._autocomplete(this.value)" style="width:100%;box-sizing:border-box" />
+          <div id="pantry-ing-suggestions" class="adhoc-suggestions hidden"></div>
+        </div>
       </div>
       <div class="form-row">
         <div class="form-group">
@@ -112,6 +116,29 @@ const Pantry = (() => {
         <button class="btn-primary" onclick="Pantry.saveNew()">Add to Pantry</button>
       </div>`;
     document.getElementById('modal-overlay').classList.remove('hidden');
+  }
+
+  function _autocomplete(query) {
+    const suggestionsEl = document.getElementById('pantry-ing-suggestions');
+    if (!suggestionsEl) return;
+    const q = (query || '').toLowerCase().trim();
+    if (q.length < 2) { suggestionsEl.classList.add('hidden'); return; }
+    const matches = Data.getPriceBook()
+      .map(e => e.ingredient)
+      .filter(name => name.includes(q))
+      .slice(0, 6);
+    if (matches.length === 0) { suggestionsEl.classList.add('hidden'); return; }
+    suggestionsEl.classList.remove('hidden');
+    suggestionsEl.innerHTML = matches
+      .map(name => `<div class="adhoc-suggestion" data-name="${_esc(name)}" onclick="Pantry._selectSuggestion(this.dataset.name)">${_esc(name)}</div>`)
+      .join('');
+  }
+
+  function _selectSuggestion(name) {
+    const input = document.getElementById('pantry-form-ing');
+    if (input) input.value = name;
+    const suggestionsEl = document.getElementById('pantry-ing-suggestions');
+    if (suggestionsEl) suggestionsEl.classList.add('hidden');
   }
 
   function saveNew() {
@@ -229,5 +256,5 @@ const Pantry = (() => {
     return (s || '').replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
   }
 
-  return { render, filter, sort, openAddForm, saveNew, openEditForm, save, remove, resetPerishables, onUnitChange };
+  return { render, filter, sort, openAddForm, saveNew, openEditForm, save, remove, resetPerishables, onUnitChange, _autocomplete, _selectSuggestion };
 })();

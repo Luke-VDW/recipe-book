@@ -528,9 +528,11 @@ const Data = (() => {
     // Open OAuth popup
     const redirectUri = window.location.href.split('?')[0].split('#')[0].replace(/index\.html$/, '') + 'oauth.html';
     const scope = encodeURIComponent('https://www.googleapis.com/auth/drive.file');
+    // No prompt param: Google silently re-issues a token when the user already
+    // consented, so expired-session reconnects are a quick popup flash.
     const url = `https://accounts.google.com/o/oauth2/v2/auth?` +
       `client_id=${encodeURIComponent(clientId)}&redirect_uri=${encodeURIComponent(redirectUri)}` +
-      `&response_type=token&scope=${scope}&prompt=consent`;
+      `&response_type=token&scope=${scope}`;
     const popup = window.open(url, 'oauth', 'width=500,height=600');
     // Listen for token from oauth.html
     window.addEventListener('message', function handler(ev) {
@@ -612,11 +614,26 @@ const Data = (() => {
         if (!localById.has(r.id) && !deletedIds.has(r.id)) mergedRecipes.push(r);
       });
 
-      // Step 3: last-write-wins for all non-recipe fields (mealPlan, shoppingList, etc.)
+      // Step 3: merge non-recipe collections.
+      // On the FIRST sync in this browser (fresh install / cleared storage / re-sign-in)
+      // we UNION both sides — a fresh device must never clobber the Drive file just
+      // because booting stamped a newer lastUpdated. On later syncs we use
+      // last-write-wins, but an empty remote collection never wipes local data.
       const remoteNewer = remote.lastUpdated && (!_db.lastUpdated || remote.lastUpdated > _db.lastUpdated);
+      const firstSync = !localStorage.getItem('rb_synced_once');
       const prevRecipeCount = (_db.recipes || []).length;
-      if (remoteNewer) {
+
+      if (firstSync) {
+        _unionMerge(remote);
+      } else if (remoteNewer) {
+        const keep = {};
+        SYNC_COLLECTIONS.forEach(k => { keep[k] = _db[k] || []; });
+        const keepPlan = _db.mealPlan;
         _db = { ..._db, ...remote };
+        SYNC_COLLECTIONS.forEach(k => {
+          if ((!_db[k] || _db[k].length === 0) && keep[k].length > 0) _db[k] = keep[k];
+        });
+        if (!_planHasContent(_db.mealPlan) && _planHasContent(keepPlan)) _db.mealPlan = keepPlan;
       }
       // Always apply the merged recipe list and combined deletion log
       _db.recipes = mergedRecipes;
@@ -630,19 +647,107 @@ const Data = (() => {
       }
 
       save();
-      const changed = remoteNewer || mergedRecipes.length !== prevRecipeCount;
+      localStorage.setItem('rb_synced_once', '1');
+      const changed = firstSync || remoteNewer || mergedRecipes.length !== prevRecipeCount;
       if (changed) App.refresh();
 
       // Step 4: push merged state to Drive
       await _uploadToDrive(fileId, token);
 
-      App.toast(remoteNewer ? 'Synced — updated from Drive ✓' : 'Synced with Drive ✓');
+      App.toast(remoteNewer || firstSync ? 'Synced — updated from Drive ✓' : 'Synced with Drive ✓');
     } catch(err) {
       console.error('Sync error', err);
-      App.toast('Sync failed — check console', 'error');
+      if (/40[13]/.test(String(err && err.message))) {
+        // Token expired (implicit-flow tokens last ~1h) — clear it and re-auth
+        clearToken();
+        if (typeof Settings !== 'undefined') Settings.updateDriveStatus();
+        App.toast('Drive session expired — signing in again…', 'warn');
+        connectDrive();
+      } else {
+        App.toast('Sync failed — check console', 'error');
+      }
     } finally {
       if (btn) btn.style.opacity = '1';
     }
+  }
+
+  const SYNC_COLLECTIONS = ['pantry', 'priceBook', 'shoppingList', 'spendLog', 'cookLog', 'savedWeekPlans'];
+
+  function _weekHasContent(wk) {
+    if (!wk) return false;
+    if ((wk.treats || []).length > 0) return true;
+    return DAYS.some(d => MEALS.some(m => {
+      const v = (wk[d] || {})[m];
+      return Array.isArray(v) ? v.some(Boolean) : !!v;
+    }));
+  }
+
+  function _planHasContent(plan) {
+    if (!plan) return false;
+    return ['week1', 'week2', 'week3', 'week4'].some(w => _weekHasContent(plan[w]));
+  }
+
+  // Union merge for the first sync on a device: keeps everything from both sides.
+  function _unionMerge(remote) {
+    // priceBook — by ingredient; union price rows
+    const pb = new Map((_db.priceBook || []).map(c => [c.ingredient.toLowerCase(), c]));
+    (remote.priceBook || []).forEach(rc => {
+      const key = (rc.ingredient || '').toLowerCase();
+      const lc = pb.get(key);
+      if (!lc) { pb.set(key, rc); return; }
+      const sig = p => [p.unit, p.pricePerUnit, p.retailer || ''].join('|');
+      const seen = new Set((lc.prices || []).map(sig));
+      (rc.prices || []).forEach(p => {
+        if (!seen.has(sig(p))) { seen.add(sig(p)); (lc.prices = lc.prices || []).push(p); }
+      });
+    });
+    _db.priceBook = [...pb.values()];
+
+    // pantry — by ingredient; newer updatedDate wins
+    const pan = new Map((_db.pantry || []).map(p => [p.ingredient.toLowerCase(), p]));
+    (remote.pantry || []).forEach(rp => {
+      const key = (rp.ingredient || '').toLowerCase();
+      const lp = pan.get(key);
+      if (!lp || (rp.updatedDate || '') > (lp.updatedDate || '')) pan.set(key, rp);
+    });
+    _db.pantry = [...pan.values()];
+
+    // shoppingList — union by name+unit; local version wins on conflict
+    const shop = new Map();
+    (remote.shoppingList || []).forEach(i => shop.set((i.name || '').toLowerCase() + '|' + (i.unit || ''), i));
+    (_db.shoppingList || []).forEach(i => shop.set((i.name || '').toLowerCase() + '|' + (i.unit || ''), i));
+    _db.shoppingList = [...shop.values()];
+
+    // spendLog / cookLog — append-only union with dedupe, kept in date order
+    const ssig = e => [e.date, e.total, e.retailer || '', (e.items || []).length].join('|');
+    const sSeen = new Set((_db.spendLog || []).map(ssig));
+    if (!_db.spendLog) _db.spendLog = [];
+    (remote.spendLog || []).forEach(e => {
+      if (!sSeen.has(ssig(e))) { sSeen.add(ssig(e)); _db.spendLog.push(e); }
+    });
+    _db.spendLog.sort((a, b) => (a.date || '') < (b.date || '') ? -1 : 1);
+
+    const csig = e => [e.date, e.recipeId, e.servings].join('|');
+    const cSeen = new Set((_db.cookLog || []).map(csig));
+    if (!_db.cookLog) _db.cookLog = [];
+    (remote.cookLog || []).forEach(e => {
+      if (!cSeen.has(csig(e))) { cSeen.add(csig(e)); _db.cookLog.push(e); }
+    });
+    _db.cookLog.sort((a, b) => (a.date || '') < (b.date || '') ? -1 : 1);
+
+    // savedWeekPlans — union by id
+    if (!_db.savedWeekPlans) _db.savedWeekPlans = [];
+    const wpIds = new Set(_db.savedWeekPlans.map(p => p.id));
+    (remote.savedWeekPlans || []).forEach(p => {
+      if (!wpIds.has(p.id)) _db.savedWeekPlans.push(p);
+    });
+
+    // mealPlan (incl. per-week treats) — take the remote week wherever the local week is empty
+    ['week1', 'week2', 'week3', 'week4'].forEach(w => {
+      if (!_weekHasContent((_db.mealPlan || {})[w]) && _weekHasContent((remote.mealPlan || {})[w])) {
+        _db.mealPlan[w] = remote.mealPlan[w];
+      }
+    });
   }
 
   async function _uploadToDrive(fileId, token) {

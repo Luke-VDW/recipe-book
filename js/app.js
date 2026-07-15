@@ -136,20 +136,23 @@ const App = (() => {
     // Render default view
     Recipes.render();
 
-    // Close FAB menus on outside click
+    // Close FAB menus on outside click. Each menu is paired with ITS OWN
+    // trigger button — a global '.fab-left' lookup breaks as soon as two
+    // views have one (the first match "wins" and the other menu insta-closes).
+    const FAB_MENUS = [
+      ['fab-menu', '#view-recipes .fab:not(.fab-left)'],
+      ['shop-action-menu', '#view-shopping .fab-left'],
+      ['planner-action-menu', '#view-planner .fab-left'],
+    ];
     document.addEventListener('click', e => {
-      const menu = document.getElementById('fab-menu');
-      const fab = document.querySelector('.fab:not(.fab-left)');
-      if (menu && !menu.classList.contains('hidden') &&
-          !menu.contains(e.target) && e.target !== fab) {
-        menu.classList.add('hidden');
-      }
-      const shopMenu = document.getElementById('shop-action-menu');
-      const shopFab = document.querySelector('.fab-left');
-      if (shopMenu && !shopMenu.classList.contains('hidden') &&
-          !shopMenu.contains(e.target) && e.target !== shopFab) {
-        shopMenu.classList.add('hidden');
-      }
+      FAB_MENUS.forEach(([menuId, fabSel]) => {
+        const menu = document.getElementById(menuId);
+        const fab = document.querySelector(fabSel);
+        if (menu && !menu.classList.contains('hidden') &&
+            !menu.contains(e.target) && !(fab && fab.contains(e.target))) {
+          menu.classList.add('hidden');
+        }
+      });
     });
 
     // Handle browser back
@@ -174,6 +177,8 @@ const App = (() => {
 
   function nav(viewName, btnEl) {
     closeFabMenu();
+    Shopping.closeActionMenu();
+    Planner.closeActionMenu();
     // Update nav buttons
     document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
     if (btnEl) btnEl.classList.add('active');
