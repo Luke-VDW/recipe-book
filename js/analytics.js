@@ -212,6 +212,13 @@ const Analytics = (() => {
     App.toast('Shop deleted');
   }
 
+  const EDIT_UNITS = ['g','kg','ml','l','item','tsp','tbsp','clove','head','loaf'];
+
+  function _unitOpts(selected) {
+    return EDIT_UNITS.map(u =>
+      `<option value="${u}"${u === (selected || 'item') ? ' selected' : ''}>${u}</option>`).join('');
+  }
+
   function editSpendEntry(realIdx) {
     const log = Data.getSpendLog();
     const entry = log[realIdx];
@@ -219,14 +226,18 @@ const Analytics = (() => {
 
     const itemRows = (entry.items || []).map((item, i) => {
       const estBadge = item.estimated ? `<span class="shop-est-badge">~est</span>` : '';
-      return `<div class="confirm-item-row" style="align-items:center">
-        <span class="confirm-item-name">${_esc(item.name)} ${estBadge}</span>
-        <span style="font-size:0.8rem;color:var(--text-muted)">${item.qty || ''} ${_esc(item.unit || '')}</span>
-        <label style="display:flex;align-items:center;gap:4px;font-size:0.85rem">R
-          <input type="number" id="edit-item-cost-${i}" step="0.01" min="0"
-            value="${item.cost != null ? item.cost.toFixed(2) : ''}"
-            style="width:70px;padding:3px 6px;border:1px solid var(--border);border-radius:6px;font-size:0.85rem" />
-        </label>
+      return `<div class="spend-edit-row" data-idx="${i}">
+        <div class="spend-edit-name">${_esc(item.name)} ${estBadge}</div>
+        <div class="spend-edit-fields">
+          <input type="number" id="edit-item-qty-${i}" class="spend-edit-qty" step="0.01" min="0"
+            value="${item.qty != null ? item.qty : ''}" placeholder="qty" />
+          <select id="edit-item-unit-${i}" class="spend-edit-unit">${_unitOpts(item.unit)}</select>
+          <span class="spend-edit-r">R</span>
+          <input type="number" id="edit-item-cost-${i}" class="spend-edit-cost" step="0.01" min="0"
+            value="${item.cost != null ? item.cost.toFixed(2) : ''}" placeholder="0.00" />
+          <button type="button" class="btn-mini btn-danger-mini" title="Remove item"
+            onclick="this.closest('.spend-edit-row').remove()">✕</button>
+        </div>
       </div>`;
     }).join('');
 
@@ -237,8 +248,10 @@ const Analytics = (() => {
         ${App.retailerChipsHtml('edit-retailer', entry.retailer || '')}
         <input type="text" id="edit-retailer" value="${_esc(entry.retailer || '')}" maxlength="30" />
       </div>
-      ${itemRows}
-      <div class="form-group" style="margin-top:8px">
+      <div class="confirm-section-title">Items</div>
+      <div id="spend-edit-items">${itemRows}</div>
+      <button type="button" class="btn-small" style="margin-top:8px" onclick="Analytics.addSpendItemRow()">＋ Add item</button>
+      <div class="form-group" style="margin-top:12px">
         <label>Override total (optional — leave blank to use sum of items)</label>
         <input type="number" id="edit-total-override" step="0.01" min="0"
           value="${entry.total != null ? entry.total.toFixed(2) : ''}" />
@@ -250,6 +263,25 @@ const Analytics = (() => {
     document.getElementById('modal-overlay').classList.remove('hidden');
   }
 
+  function addSpendItemRow() {
+    const list = document.getElementById('spend-edit-items');
+    if (!list) return;
+    const row = document.createElement('div');
+    row.className = 'spend-edit-row spend-edit-new';
+    row.innerHTML = `
+      <input type="text" class="spend-edit-name-input" placeholder="Item name" maxlength="40" />
+      <div class="spend-edit-fields">
+        <input type="number" class="spend-edit-qty" step="0.01" min="0" placeholder="qty" />
+        <select class="spend-edit-unit">${_unitOpts('item')}</select>
+        <span class="spend-edit-r">R</span>
+        <input type="number" class="spend-edit-cost" step="0.01" min="0" placeholder="0.00" />
+        <button type="button" class="btn-mini btn-danger-mini" title="Remove item"
+          onclick="this.closest('.spend-edit-row').remove()">✕</button>
+      </div>`;
+    list.appendChild(row);
+    row.querySelector('.spend-edit-name-input')?.focus();
+  }
+
   function saveSpendEntry(realIdx) {
     const log = Data.getSpendLog();
     const entry = log[realIdx];
@@ -258,19 +290,50 @@ const Analytics = (() => {
     const retailer = (document.getElementById('edit-retailer')?.value || '').trim();
     const overrideRaw = parseFloat(document.getElementById('edit-total-override')?.value);
 
-    const updatedItems = (entry.items || []).map((item, i) => {
-      const newCost = parseFloat(document.getElementById(`edit-item-cost-${i}`)?.value);
-      if (!isNaN(newCost) && newCost >= 0 && newCost !== item.cost) {
-        if (item.estimated && item.qty) {
+    // Rebuild the item list from what's left in the modal: rows removed with ✕
+    // are dropped, new rows are appended. Pantry is deliberately not touched.
+    const updatedItems = [];
+    document.querySelectorAll('#spend-edit-items .spend-edit-row').forEach(row => {
+      if (row.classList.contains('spend-edit-new')) {
+        const name = (row.querySelector('.spend-edit-name-input')?.value || '').trim().toLowerCase();
+        if (!name) return;
+        const qty = parseFloat(row.querySelector('.spend-edit-qty')?.value);
+        const unit = row.querySelector('.spend-edit-unit')?.value || 'item';
+        const cost = parseFloat(row.querySelector('.spend-edit-cost')?.value);
+        updatedItems.push({
+          name,
+          qty: (!isNaN(qty) && qty > 0) ? qty : null,
+          unit,
+          cost: (!isNaN(cost) && cost >= 0) ? cost : 0,
+          estimated: false,
+        });
+        return;
+      }
+      const i = parseInt(row.dataset.idx);
+      const orig = (entry.items || [])[i];
+      if (!orig) return;
+      const qty = parseFloat(document.getElementById(`edit-item-qty-${i}`)?.value);
+      const unit = document.getElementById(`edit-item-unit-${i}`)?.value || orig.unit || 'item';
+      const cost = parseFloat(document.getElementById(`edit-item-cost-${i}`)?.value);
+      const item = {
+        ...orig,
+        qty: (!isNaN(qty) && qty >= 0) ? qty : orig.qty,
+        unit,
+        cost: (!isNaN(cost) && cost >= 0) ? cost : orig.cost,
+      };
+      if (item.cost !== orig.cost) {
+        if (orig.estimated && item.qty) {
           Data.setPriceEntry(item.name.toLowerCase().trim(), {
-            unit: item.unit || 'item',
-            pricePerUnit: newCost / item.qty,
+            unit: item.unit,
+            pricePerUnit: item.cost / item.qty,
+            totalPrice: item.cost,
+            totalQty: item.qty,
             retailer,
           });
         }
-        return { ...item, cost: newCost, estimated: false };
+        item.estimated = false;
       }
-      return item;
+      updatedItems.push(item);
     });
 
     const sumTotal = updatedItems.reduce((s, i) => s + (i.cost || 0), 0);
@@ -283,5 +346,5 @@ const Analytics = (() => {
     App.toast('Shop updated ✓');
   }
 
-  return { render, clearLog, editSpendEntry, saveSpendEntry, deleteSpendEntry, deleteCook };
+  return { render, clearLog, editSpendEntry, saveSpendEntry, addSpendItemRow, deleteSpendEntry, deleteCook };
 })();

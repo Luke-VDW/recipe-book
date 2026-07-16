@@ -361,7 +361,11 @@ input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; marg
   transition: border-color .15s, color .15s, background .15s;
 }
 .btn-mini-primary { background: var(--dk-green); color: #fff; border-color: var(--dk-green); }
-.btn-mini-primary:hover { background: var(--md-green); color: #fff; }
+/* Hover styles only on devices with a real pointer — on touch screens :hover
+   "sticks" to whatever ends up under the finger after a list re-render */
+@media (hover: hover) {
+  .btn-mini-primary:hover { background: var(--md-green); color: #fff; }
+}
 
 /* ── CALORIE ROW (recipe form) ── */
 .kcal-display, .kcal-edit-row {
@@ -474,7 +478,10 @@ input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; marg
   display: flex; align-items: center; justify-content: space-between;
   padding: 10px 14px; cursor: pointer; gap: 8px;
 }
-.treat-search-result:hover { background: var(--lt-green); }
+.treat-search-result:active { background: var(--lt-green); }
+@media (hover: hover) {
+  .treat-search-result:hover { background: var(--lt-green); }
+}
 .treat-search-result + .treat-search-result { border-top: 1px solid var(--border); }
 .treat-search-name { font-weight: 600; font-size: 0.9rem; text-transform: capitalize; flex: 1; min-width: 0; }
 .treat-search-cat { font-size: 0.75rem; color: var(--text-muted); background: var(--lt-green); padding: 2px 7px; border-radius: 10px; flex-shrink: 0; }
@@ -929,7 +936,9 @@ input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; marg
   cursor: pointer;
   font-weight: 600;
 }
-.btn-danger-mini:hover { background: #fca5a5; }
+@media (hover: hover) {
+  .btn-danger-mini:hover { background: #fca5a5; }
+}
 
 /* Section header with multiple action buttons */
 .section-header-actions {
@@ -1104,7 +1113,10 @@ input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; marg
 /* Ad-hoc autocomplete dropdown */
 .adhoc-suggestions { position: absolute; top: 100%; left: 0; right: 0; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,.1); z-index: 100; max-height: 200px; overflow-y: auto; }
 .adhoc-suggestion { padding: 8px 12px; font-size: 0.88rem; cursor: pointer; }
-.adhoc-suggestion:hover { background: var(--lt-green); }
+.adhoc-suggestion:active { background: var(--lt-green); }
+@media (hover: hover) {
+  .adhoc-suggestion:hover { background: var(--lt-green); }
+}
 
 /* Confirm shop modal item rows */
 .confirm-section-title { font-size: 0.78rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: .05em; margin: 12px 0 6px; }
@@ -1121,7 +1133,9 @@ input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; marg
 .analytics-shop-retailer { font-size: 0.78rem; color: var(--text-muted); margin-left: 6px; }
 
 /* Mini button hover (single .btn-mini definition lives in the recipe-form section) */
-.btn-mini:hover { border-color: var(--md-green); color: var(--md-green); }
+@media (hover: hover) {
+  .btn-mini:hover { border-color: var(--md-green); color: var(--md-green); }
+}
 
 /* ── Cook confirmation modal (Sub-project C) ───────── */
 
@@ -1171,7 +1185,10 @@ input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; marg
   text-transform: capitalize; border-bottom: 1px solid var(--border);
 }
 .ing-name-suggestion:last-child { border-bottom: none; }
-.ing-name-suggestion:hover, .ing-name-suggestion:active { background: var(--lt-green); }
+.ing-name-suggestion:active { background: var(--lt-green); }
+@media (hover: hover) {
+  .ing-name-suggestion:hover { background: var(--lt-green); }
+}
 
 /* Step row: align-items flex-start so buttons stay at top of textarea */
 .step-row { display: flex; align-items: flex-start; gap: 6px; margin-bottom: 6px; }
@@ -1239,7 +1256,9 @@ input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; marg
   color: inherit;
   white-space: nowrap;
 }
-.fab-menu-item:hover { background: var(--lt-green); }
+@media (hover: hover) {
+  .fab-menu-item:hover { background: var(--lt-green); }
+}
 .fab-menu-item + .fab-menu-item { border-top: 1px solid var(--border); }
 
 /* ── Search clear button (Sub-project G) ── */
@@ -1305,6 +1324,21 @@ input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; marg
 }
 .confirm-item-qty-wrap { display: inline-flex; align-items: center; gap: 4px; }
 .confirm-item-unit { font-size: 0.85rem; color: var(--text-muted); }
+
+/* ── Spend edit modal rows ── */
+.spend-edit-row { padding: 7px 0; border-bottom: 1px solid var(--border); }
+.spend-edit-row:last-child { border-bottom: none; }
+.spend-edit-name { font-size: .88rem; font-weight: 600; text-transform: capitalize; margin-bottom: 4px; }
+.spend-edit-name-input {
+  width: 100%; padding: 6px 8px; margin-bottom: 4px;
+  border: 1px solid var(--border); border-radius: var(--radius-sm);
+  font-size: .88rem; background: var(--surface); box-sizing: border-box;
+}
+.spend-edit-fields { display: flex; align-items: center; gap: 5px; }
+.spend-edit-qty { width: 62px; padding: 4px 6px; border: 1px solid var(--border); border-radius: 6px; font-size: .85rem; }
+.spend-edit-unit { padding: 4px 5px; border: 1px solid var(--border); border-radius: 6px; font-size: .82rem; background: var(--surface); color: var(--text); }
+.spend-edit-r { font-size: .85rem; color: var(--text-muted); margin-left: auto; }
+.spend-edit-cost { width: 72px; padding: 4px 6px; border: 1px solid var(--border); border-radius: 6px; font-size: .85rem; }
 
 /* ── Retailer quick-select chips ── */
 .retailer-chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 2px 0 4px; }

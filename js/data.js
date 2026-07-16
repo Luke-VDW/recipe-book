@@ -404,6 +404,12 @@ const Data = (() => {
       updatedDate: new Date().toISOString().slice(0, 10),
     };
     if (priceEntry.gramEquiv) entry.gramEquiv = parseFloat(priceEntry.gramEquiv);
+    // Keep the as-purchased figures so the UI can show "R 79.99/500g"
+    const tp = parseFloat(priceEntry.totalPrice);
+    if (!isNaN(tp)) {
+      entry.totalPrice = tp;
+      entry.totalQty = parseFloat(priceEntry.totalQty) || 1;
+    }
     const rowIdx = card.prices.findIndex(
       p => p.unit === entry.unit && p.retailer.toLowerCase() === entry.retailer.toLowerCase()
     );

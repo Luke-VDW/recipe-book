@@ -298,7 +298,7 @@ const Shopping = (() => {
     const unit = document.getElementById('sp-unit-' + idx)?.value || 'item';
     const retailer = (document.getElementById('sp-retailer-' + idx)?.value || '').trim();
     if (isNaN(price) || price < 0) { App.toast('Enter a valid price', 'warn'); return; }
-    Data.setPriceEntry(item.name.toLowerCase().trim(), { unit, pricePerUnit: price, retailer });
+    Data.setPriceEntry(item.name.toLowerCase().trim(), { unit, pricePerUnit: price, totalPrice: price, totalQty: 1, retailer });
     render();
     App.toast('Price saved ✓');
   }
@@ -616,6 +616,8 @@ const Shopping = (() => {
         Data.setPriceEntry(item.name.toLowerCase().trim(), {
           unit: purchaseUnit,
           pricePerUnit: item.actualPrice / purchaseQty,
+          totalPrice: item.actualPrice,
+          totalQty: purchaseQty,
           retailer,
         });
       }
