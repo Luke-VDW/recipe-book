@@ -1087,11 +1087,11 @@ input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; marg
 
 /* Combined actual qty + actual price row */
 .shop-actual-row {
-  display: flex; align-items: center;
-  justify-content: space-between; gap: 8px;
+  display: flex; align-items: center; flex-wrap: wrap;
+  justify-content: space-between; gap: 6px 8px;
   margin-top: 5px;
 }
-.shop-iq-group { display: flex; align-items: center; gap: 4px; }
+.shop-iq-group { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; }
 .shop-actual-price-group { display: flex; align-items: center; gap: 4px; flex-shrink: 0; }
 .shop-iq-label { font-size: 0.78rem; color: var(--text-muted); flex-shrink: 0; font-weight: 600; }
 .shop-iq-input { width: 60px; padding: 4px 6px; font-size: 0.82rem; border: 1px solid var(--border); border-radius: 6px; background: var(--surface); }
@@ -1099,6 +1099,11 @@ input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; marg
 .shop-actual-input { width: 60px; padding: 4px 6px; font-size: 0.82rem; border: 1px solid var(--border); border-radius: 6px; }
 .shop-99-btn { background: var(--surface-alt, #f0faf4); border: 1px solid var(--border); border-radius: 6px; padding: 3px 6px; font-size: 0.75rem; font-weight: 600; cursor: pointer; color: var(--dk-green); white-space: nowrap; flex-shrink: 0; }
 .shop-99-btn:active { background: var(--lt-green); }
+
+/* Buy-quantity multiplier (e.g. buying ×2 170g cans) */
+.shop-mult-group { display: flex; align-items: center; gap: 3px; margin-left: 2px; flex-shrink: 0; }
+.shop-mult-val { font-size: 0.8rem; font-weight: 700; color: var(--dk-green); min-width: 20px; text-align: center; }
+.shop-mult-hint { width: 100%; font-size: 0.74rem; color: var(--text-muted); margin-top: 2px; }
 
 /* Estimated price display row */
 .shop-price-row { margin-top: 3px; }

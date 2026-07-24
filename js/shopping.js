@@ -98,9 +98,37 @@ const Shopping = (() => {
     _confirmUnitOverrides[idx] = value || null;
   }
 
+  // Qty/price inputs hold the PER-PACK figures (e.g. one 170g can); actualQty/
+  // actualPrice — read everywhere else in the app — are always packQty/packPrice
+  // × qtyMultiplier, so nothing downstream (cost estimate, totals, confirm
+  // shop, pantry batch, price book) needs to know multipliers exist.
   function setActualQty(idx, value) {
     const qty = parseFloat(value);
-    Data.updateShoppingItem(idx, { actualQty: isNaN(qty) || qty < 0 ? null : qty });
+    const packQty = (isNaN(qty) || qty < 0) ? null : qty;
+    const items = Data.getShoppingList();
+    const mult = (items[idx] && items[idx].qtyMultiplier) || 1;
+    Data.updateShoppingItem(idx, {
+      packQty,
+      actualQty: packQty != null ? packQty * mult : null,
+    });
+    render();
+  }
+
+  function setQtyMultiplier(idx, value) {
+    let mult = parseInt(value, 10);
+    if (isNaN(mult) || mult < 1) mult = 1;
+    const items = Data.getShoppingList();
+    const item = items[idx];
+    if (!item) return;
+    const packQty   = item.packQty   != null ? item.packQty   : item.actualQty;
+    const packPrice = item.packPrice != null ? item.packPrice : item.actualPrice;
+    Data.updateShoppingItem(idx, {
+      qtyMultiplier: mult,
+      packQty, packPrice,
+      actualQty:   packQty   != null ? packQty   * mult : null,
+      actualPrice: packPrice != null ? packPrice * mult : null,
+    });
+    render();
   }
 
   function setActualUnit(idx, value) {
@@ -225,26 +253,42 @@ const Shopping = (() => {
 
     const iqUnits = ['g','kg','ml','l','item','tsp','tbsp','clove','head','loaf'];
     const iqUnitOpts = iqUnits.map(u => `<option value="${u}"${(item.actualUnit || item.unit || 'item') === u ? ' selected' : ''}>${u}</option>`).join('');
+
+    const mult = item.qtyMultiplier || 1;
+    const packQty   = item.packQty   != null ? item.packQty   : item.actualQty;
+    const packPrice = item.packPrice != null ? item.packPrice : item.actualPrice;
+    const multGroup = `
+      <div class="shop-mult-group" title="How many of this item did you buy?">
+        <button type="button" class="stepper-btn" onclick="Shopping.setQtyMultiplier(${item._idx}, ${Math.max(1, mult - 1)})">−</button>
+        <span class="shop-mult-val">×${mult}</span>
+        <button type="button" class="stepper-btn" onclick="Shopping.setQtyMultiplier(${item._idx}, ${mult + 1})">+</button>
+      </div>`;
+    const multHint = mult > 1
+      ? `<div class="shop-mult-hint">= ${fmtQty((parseFloat(packQty) || 0) * mult) || '0'} ${_esc(item.actualUnit || item.unit || '')} · R ${((parseFloat(packPrice) || 0) * mult).toFixed(2)} total</div>`
+      : '';
+
     const qtyRow = !item.pantryUsed ? `
       <div class="shop-actual-row">
         <div class="shop-iq-group">
           <span class="shop-iq-label">Actual:</span>
           <input type="number" class="shop-iq-input" step="0.01" min="0"
-            value="${item.actualQty != null ? item.actualQty : ''}"
+            value="${packQty != null ? packQty : ''}"
             placeholder="${fmtQty(item.qty) || '?'}"
             onchange="Shopping.setActualQty(${item._idx}, this.value)" />
           <select class="shop-iq-unit" onchange="Shopping.setActualUnit(${item._idx}, this.value)">${iqUnitOpts}</select>
+          ${multGroup}
         </div>
         <div class="shop-actual-price-group">
           <span class="shop-iq-label">R</span>
           <input type="number" class="shop-actual-input" id="shop-actual-${item._idx}"
             step="0.01" min="0"
-            value="${item.actualPrice != null ? item.actualPrice : ''}"
+            value="${packPrice != null ? packPrice : ''}"
             placeholder="0.00"
             onchange="Shopping.setActualPrice(${item._idx}, this.value)" />
           <button class="shop-99-btn" onclick="Shopping.appendNineNine(${item._idx})">.99</button>
         </div>
-      </div>` : '';
+      </div>
+      ${multHint}` : '';
 
     return `
       <div class="shop-item ${item.checked ? 'checked' : ''}" id="shop-item-${item._idx}">
@@ -419,7 +463,13 @@ const Shopping = (() => {
 
   function setActualPrice(idx, value) {
     const price = parseFloat(value);
-    Data.updateShoppingItem(idx, { actualPrice: (isNaN(price) || price < 0) ? null : price });
+    const packPrice = (isNaN(price) || price < 0) ? null : price;
+    const items = Data.getShoppingList();
+    const mult = (items[idx] && items[idx].qtyMultiplier) || 1;
+    Data.updateShoppingItem(idx, {
+      packPrice,
+      actualPrice: packPrice != null ? packPrice * mult : null,
+    });
     render();
   }
 
@@ -704,5 +754,5 @@ const Shopping = (() => {
     setActualPrice(idx, input.value);
   }
 
-  return { render, toggle, toggleSources, clearChecked, editPrice, savePrice, markPantryUsed, setActualPrice, appendNineNine, openAddAdHocItem, _adhocAutocomplete, _adhocSelect, saveAdHocItem, openConfirmShop, confirmShop, setRecipeFilter, toggleRecipeFilter, _setConfirmQty, _setConfirmUnit, setActualQty, setActualUnit, toggleActionMenu, closeActionMenu, confirmClearChecked, checkAll, uncheckAll };
+  return { render, toggle, toggleSources, clearChecked, editPrice, savePrice, markPantryUsed, setActualPrice, appendNineNine, openAddAdHocItem, _adhocAutocomplete, _adhocSelect, saveAdHocItem, openConfirmShop, confirmShop, setRecipeFilter, toggleRecipeFilter, _setConfirmQty, _setConfirmUnit, setActualQty, setActualUnit, setQtyMultiplier, toggleActionMenu, closeActionMenu, confirmClearChecked, checkAll, uncheckAll };
 })();
