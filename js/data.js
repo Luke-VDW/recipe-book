@@ -56,9 +56,52 @@ const Data = (() => {
     } catch(e) { console.warn('Data.load error', e); }
   }
 
+  // Set while syncDrive() is running so its internal save() can't re-trigger sync.
+  let _syncing = false;
+  let _autoSyncTimer = null;
+  let _dirtyDuringSync = false;
+
   function save() {
     _db.lastUpdated = new Date().toISOString();
-    localStorage.setItem('recipebook_db', JSON.stringify(_db));
+    try {
+      localStorage.setItem('recipebook_db', JSON.stringify(_db));
+    } catch (e) {
+      // Quota exceeded / storage blocked. Previously this threw and aborted the
+      // caller mid-write, silently losing the change (e.g. a large logged shop).
+      console.error('Save failed', e);
+      if (typeof App !== 'undefined') {
+        App.toast('Storage full — could not save locally. Syncing to Drive…', 'error');
+      }
+      if (isDriveConnected() && !_syncing) syncDrive(true);
+      return;
+    }
+    if (_syncing) _dirtyDuringSync = true;
+    else _scheduleAutoSync();
+  }
+
+  // Push to Drive shortly after edits settle, so data is never stranded in
+  // localStorage waiting for a manual sync tap.
+  function _scheduleAutoSync() {
+    if (!isDriveConnected()) return;
+    clearTimeout(_autoSyncTimer);
+    _autoSyncTimer = setTimeout(() => { syncDrive(true); }, 4000);
+  }
+
+  // Best-effort immediate push when the app is being backgrounded or closed.
+  function flushSync() {
+    if (!isDriveConnected() || _syncing) return;
+    clearTimeout(_autoSyncTimer);
+    syncDrive(true);
+  }
+
+  // Ask the browser not to evict our storage (iOS/Android PWAs can otherwise
+  // clear localStorage under storage pressure or after periods of disuse).
+  async function requestPersistence() {
+    try {
+      if (navigator.storage && navigator.storage.persist) {
+        if (!(await navigator.storage.persisted())) await navigator.storage.persist();
+      }
+    } catch (e) { /* non-fatal */ }
   }
 
   // ── Accessors ───────────────────────
@@ -473,6 +516,26 @@ const Data = (() => {
     return book.find(c => lower.includes(c.ingredient.toLowerCase())) || null;
   }
 
+  // Ingredients flagged "no price needed" (cheap spices etc.) are excluded from
+  // the recipe-cost gap warning instead of counting as missing prices.
+  function isPriceIgnored(name) {
+    const card = lookupPriceEntry(name);
+    return !!(card && card.ignorePrice);
+  }
+
+  function setIgnorePrice(name, ignore) {
+    const lower = (name || '').toLowerCase().trim();
+    if (!_db.priceBook) _db.priceBook = [];
+    let card = _db.priceBook.find(c => c.ingredient.toLowerCase() === lower);
+    if (!card) {
+      card = { ingredient: lower, prices: [] };
+      _db.priceBook.push(card);
+    }
+    if (ignore) card.ignorePrice = true;
+    else delete card.ignorePrice;
+    save();
+  }
+
   function lookupPrice(name, qty, unit) {
     const card = lookupPriceEntry(name);
     if (!card) return null;
@@ -589,11 +652,14 @@ const Data = (() => {
     return created.id;
   }
 
-  async function syncDrive() {
+  async function syncDrive(quiet) {
     if (!isDriveConnected()) {
-      App.toast('Not connected to Drive. Go to Settings.', 'warn');
+      if (!quiet) App.toast('Not connected to Drive. Go to Settings.', 'warn');
       return;
     }
+    if (_syncing) return;
+    _syncing = true;
+    clearTimeout(_autoSyncTimer);
     const btn = document.getElementById('btn-sync');
     if (btn) btn.style.opacity = '0.4';
     try {
@@ -660,20 +726,28 @@ const Data = (() => {
       // Step 4: push merged state to Drive
       await _uploadToDrive(fileId, token);
 
-      App.toast(remoteNewer || firstSync ? 'Synced — updated from Drive ✓' : 'Synced with Drive ✓');
+      if (!quiet) App.toast(remoteNewer || firstSync ? 'Synced — updated from Drive ✓' : 'Synced with Drive ✓');
     } catch(err) {
       console.error('Sync error', err);
       if (/40[13]/.test(String(err && err.message))) {
-        // Token expired (implicit-flow tokens last ~1h) — clear it and re-auth
+        // Token expired (implicit-flow tokens last ~1h) — clear it and re-auth.
+        // Only prompt on an explicit sync; a background push must never steal focus.
         clearToken();
         if (typeof Settings !== 'undefined') Settings.updateDriveStatus();
-        App.toast('Drive session expired — signing in again…', 'warn');
-        connectDrive();
-      } else {
+        if (!quiet) {
+          App.toast('Drive session expired — signing in again…', 'warn');
+          connectDrive();
+        } else {
+          App.toast('Drive session expired — tap ↻ to sign in again', 'warn');
+        }
+      } else if (!quiet) {
         App.toast('Sync failed — check console', 'error');
       }
     } finally {
+      _syncing = false;
       if (btn) btn.style.opacity = '1';
+      // Edits made while the sync was in flight still need pushing
+      if (_dirtyDuringSync) { _dirtyDuringSync = false; _scheduleAutoSync(); }
     }
   }
 
@@ -870,6 +944,34 @@ const Data = (() => {
     save();
   }
 
+  // Adds the recipes defined in js/bundled-recipes.js, skipping any already
+  // present (by id) and any the user has deliberately deleted. Once added they
+  // reach Drive through the normal sync.
+  function addBundledRecipes() {
+    if (typeof BUNDLED_RECIPES === 'undefined') {
+      App.toast('No bundled recipes available', 'warn');
+      return;
+    }
+    const existing = new Set((_db.recipes || []).map(r => r.id));
+    const deleted = new Set(_db.deletedRecipeIds || []);
+    let added = 0;
+    BUNDLED_RECIPES.forEach(r => {
+      if (existing.has(r.id) || deleted.has(r.id)) return;
+      _db.recipes.push(JSON.parse(JSON.stringify(r)));
+      added++;
+    });
+    if (added === 0) {
+      App.toast('Those recipes are already in your book');
+      return;
+    }
+    save();
+    if (typeof Recipes !== 'undefined') {
+      BUNDLED_RECIPES.forEach(r => ensurePriceBookEntries(Recipes.parseIngredients(r.ingredients)));
+      Recipes.render();
+    }
+    App.toast(`${added} recipe${added !== 1 ? 's' : ''} added ✓`);
+  }
+
   function loadStarterPrices() {
     if (_db.priceBook && _db.priceBook.length > 0) return;
     const d = '2026-06-29';
@@ -991,6 +1093,7 @@ const Data = (() => {
     loadStarterData, loadStarterPrices, getClientId, setClientId,
     getPriceBook, setPriceEntry, removePriceEntry, addIngredientEntry, removeIngredient,
     lookupPriceEntry, lookupPrice, lookupPriceMismatch, ensurePriceBookEntries, syncAllRecipeIngredients,
+    isPriceIgnored, setIgnorePrice, requestPersistence, flushSync, addBundledRecipes,
     setPantryItem, addPantryBatch, deductPantryFIFO, getFIFO, setFIFO,
     removePantryItem, clearPantryPerishables, getPantryItem,
     getSpendLog, logSpend, clearSpendLog, updateSpendEntry, deleteSpendEntry,

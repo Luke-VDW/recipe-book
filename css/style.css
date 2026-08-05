@@ -1330,6 +1330,22 @@ input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; marg
 .confirm-item-qty-wrap { display: inline-flex; align-items: center; gap: 4px; }
 .confirm-item-unit { font-size: 0.85rem; color: var(--text-muted); }
 
+/* ── Optional extras (recipe detail + form) ── */
+.optional-row { opacity: .72; transition: opacity .15s; align-items: center !important; }
+.optional-row.on { opacity: 1; }
+.optional-row.on span:not(.ing-cost) { font-weight: 600; }
+.optional-cb { width: 17px; height: 17px; accent-color: var(--dk-green); flex-shrink: 0; }
+.opt-kcal-input {
+  width: 66px; padding: 5px 8px; border: 1px solid var(--border);
+  border-radius: var(--radius-sm); font-size: 0.85rem;
+  background: var(--surface); color: inherit;
+}
+.ing-cost-ignored { color: var(--text-muted); font-style: italic; }
+.pb-ignore-badge {
+  font-size: 0.7rem; background: #e5e7eb; color: #4b5563;
+  border-radius: 4px; padding: 1px 6px; margin-left: 6px; vertical-align: middle;
+}
+
 /* ── Spend edit modal rows ── */
 .spend-edit-row { padding: 7px 0; border-bottom: 1px solid var(--border); }
 .spend-edit-row:last-child { border-bottom: none; }

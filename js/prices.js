@@ -67,6 +67,8 @@ const PriceBook = (() => {
       const realIdx = entries.indexOf(card);
       const orphanBadge = isOrphaned(card.ingredient)
         ? `<span class="pb-orphan-badge">no recipes</span>` : '';
+      const ignoreBadge = card.ignorePrice
+        ? `<span class="pb-ignore-badge">not priced</span>` : '';
       const priceRows = card.prices.map((p, pIdx) => {
         const retailerHtml = p.retailer
           ? `<span class="pb-retailer-tag">${_esc(p.retailer)}</span>` : '';
@@ -89,8 +91,10 @@ const PriceBook = (() => {
       return `
         <div class="pb-card">
           <div class="pb-card-header">
-            <span class="pb-card-name">${_esc(card.ingredient)}${orphanBadge}</span>
+            <span class="pb-card-name">${_esc(card.ingredient)}${orphanBadge}${ignoreBadge}</span>
             <div class="pb-card-actions">
+              <button class="btn-mini${card.ignorePrice ? ' active' : ''}" onclick="PriceBook.toggleIgnore(${realIdx})"
+                title="Exclude from recipe cost warnings — for things not worth pricing">${card.ignorePrice ? '✓ Not priced' : '⃠ No price'}</button>
               <button class="btn-mini" onclick="PriceBook.openAddPriceForm(${realIdx})">＋ Add price</button>
               <button class="btn-mini btn-danger-mini" onclick="PriceBook.removeIngredient(${realIdx})">✕ Remove</button>
             </div>
@@ -289,6 +293,17 @@ const PriceBook = (() => {
     App.toast('Removed');
   }
 
+  function toggleIgnore(ingredientIdx) {
+    const card = Data.getPriceBook()[ingredientIdx];
+    if (!card) return;
+    const now = !card.ignorePrice;
+    Data.setIgnorePrice(card.ingredient, now);
+    render();
+    App.toast(now
+      ? `"${card.ingredient}" won't count as a missing price`
+      : `"${card.ingredient}" counted in pricing again`);
+  }
+
   function removeIngredient(ingredientIdx) {
     if (!confirm('Remove this ingredient and all its prices?')) return;
     Data.removeIngredient(ingredientIdx);
@@ -314,5 +329,5 @@ const PriceBook = (() => {
     return f % 1 === 0 ? String(f) : f.toFixed(2).replace(/\.?0+$/, '');
   }
 
-  return { render, filter, sort, toggleOrphans, openAddIngredientForm, saveNewIngredient, openAddPriceForm, openEditPriceForm, savePrice, removePrice, removeIngredient, onUnitChange };
+  return { render, filter, sort, toggleOrphans, openAddIngredientForm, saveNewIngredient, openAddPriceForm, openEditPriceForm, savePrice, removePrice, removeIngredient, onUnitChange, toggleIgnore };
 })();

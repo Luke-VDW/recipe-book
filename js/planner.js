@@ -92,6 +92,7 @@ const Planner = (() => {
     let total = 0;
     let partial = false;
     for (const ing of ingredients) {
+      if (Data.isPriceIgnored(ing.name)) continue;
       const cost = Data.lookupPrice(ing.name, ing.qty, ing.unit);
       if (cost === null) partial = true;
       else total += cost;

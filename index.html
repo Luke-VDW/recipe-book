@@ -164,6 +164,11 @@
         <button class="btn-secondary" onclick="Data.syncAllRecipeIngredients()">📋 Sync ingredients from recipes</button>
       </div>
       <div class="settings-group">
+        <h3>Bundled Recipes</h3>
+        <p class="hint">Adds Apple Crumble, Cinnamon Puff Pastry Swirls and JB's Banana Bread to your book. Skips any you already have or have deleted.</p>
+        <button class="btn-secondary" onclick="Data.addBundledRecipes()">🍰 Add bundled recipes</button>
+      </div>
+      <div class="settings-group">
         <h3>Spend Analytics</h3>
         <p class="hint">Track your grocery spend over time with weekly and monthly breakdowns.</p>
         <button class="btn-secondary" onclick="App.pushView('analytics','Spend Analytics'); Analytics.render()">View Analytics →</button>
@@ -288,6 +293,7 @@
   </div>
 
   <!-- Scripts -->
+  <script src="js/bundled-recipes.js"></script>
   <script src="js/data.js"></script>
   <script src="js/recipes.js"></script>
   <script src="js/planner.js"></script>

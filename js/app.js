@@ -119,6 +119,17 @@ const App = (() => {
     Data.loadStarterData();
     Data.loadStarterPrices();
 
+    // Ask the browser to keep our storage (PWAs can otherwise be evicted)
+    Data.requestPersistence();
+
+    // Pull/merge from Drive on startup, and push pending changes when the app
+    // is backgrounded or closed — so nothing is stranded in localStorage.
+    if (Data.isDriveConnected()) Data.syncDrive(true);
+    window.addEventListener('pagehide', () => Data.flushSync());
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'hidden') Data.flushSync();
+    });
+
     // Register service worker
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('./sw.js').catch(console.warn);

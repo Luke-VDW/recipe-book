@@ -7,6 +7,7 @@ const Recipes = (() => {
   let _activeId    = null;
   let _baseServings = 1;
   let _targetServings = 1;
+  let _selectedOptionals = new Set(); // optional extras ticked on the detail view
 
   // ── Ingredient parser ────────────────
   const UNITS = [
@@ -185,6 +186,62 @@ const Recipes = (() => {
     if (row) row.remove();
   }
 
+  // ── Optional-extra rows (recipe form) ──
+  let _optCount = 0;
+
+  function _optRowHtml(n, qty, unit, name, kcal) {
+    const unitOpts = ING_UNITS.map(u =>
+      `<option value="${u}"${u === (unit || 'item') ? ' selected' : ''}>${u}</option>`
+    ).join('');
+    return `<div class="ing-row opt-row" id="opt-row-${n}">
+      <input type="number" id="opt-qty-${n}" class="ing-qty-input" min="0" step="0.01"
+        value="${qty != null && qty !== '' ? qty : ''}" placeholder="qty" />
+      <select id="opt-unit-${n}" class="ing-unit-select">${unitOpts}</select>
+      <input type="text" id="opt-name-${n}" class="ing-name-input"
+        value="${_esc(name || '')}" placeholder="e.g. chocolate chips" />
+      <input type="number" id="opt-kcal-${n}" class="opt-kcal-input" min="0" step="1"
+        value="${kcal != null && kcal !== '' ? kcal : ''}" placeholder="kcal" title="Calories this add-in contributes in total" />
+      <button type="button" class="btn-row-remove" onclick="Recipes._removeOptRow(${n})">✕</button>
+    </div>`;
+  }
+
+  function _renderOptRows(optionals) {
+    _optCount = 0;
+    const list = document.getElementById('rf-opt-list');
+    if (list) list.innerHTML = '';
+    (optionals || []).forEach(o => _addOptRow(o.qty, o.unit, o.name, o.kcal));
+  }
+
+  function _addOptRow(qty, unit, name, kcal) {
+    const list = document.getElementById('rf-opt-list');
+    if (!list) return;
+    const n = _optCount++;
+    list.insertAdjacentHTML('beforeend', _optRowHtml(n, qty, unit, name, kcal));
+  }
+
+  function _removeOptRow(n) {
+    const row = document.getElementById('opt-row-' + n);
+    if (row) row.remove();
+  }
+
+  function _collectOptionals() {
+    const out = [];
+    document.querySelectorAll('#rf-opt-list .opt-row').forEach(row => {
+      const n = row.id.replace('opt-row-', '');
+      const name = (document.getElementById('opt-name-' + n)?.value || '').trim();
+      if (!name) return;
+      const qty  = parseFloat(document.getElementById('opt-qty-' + n)?.value);
+      const kcal = parseFloat(document.getElementById('opt-kcal-' + n)?.value);
+      out.push({
+        name,
+        qty:  isNaN(qty) ? null : qty,
+        unit: document.getElementById('opt-unit-' + n)?.value || 'item',
+        kcal: isNaN(kcal) ? null : kcal,
+      });
+    });
+    return out;
+  }
+
   function _esc(s) {
     return (s || '').replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
   }
@@ -301,23 +358,44 @@ const Recipes = (() => {
   }
 
   // ── Recipe cost estimate ─────────────
-  function _calcRecipeCost(r) {
+  // multiplier scales quantities (servings stepper); optionalNames is a Set of
+  // optional-extra names currently ticked on the detail view.
+  function _calcRecipeCost(r, multiplier, optionalNames) {
+    const mult = multiplier || 1;
     const ings = parseIngredients(r.ingredients);
-    if (!ings.length) return null;
+    const extras = (r.optionalIngredients || [])
+      .filter(o => optionalNames && optionalNames.has(o.name));
+    if (!ings.length && !extras.length) return null;
     let total = 0, hasCost = false, hasGap = false;
-    for (const ing of ings) {
-      if (!ing.qty && ing.qty !== 0) { hasGap = true; continue; }
-      const cost = Data.lookupPrice(ing.name, ing.qty, ing.unit);
-      if (cost === null) hasGap = true;
-      else { total += cost; hasCost = true; }
-    }
+    const tally = ing => {
+      if (!ing.qty && ing.qty !== 0) {
+        if (!Data.isPriceIgnored(ing.name)) hasGap = true;
+        return;
+      }
+      const cost = Data.lookupPrice(ing.name, (parseFloat(ing.qty) || 0) * mult, ing.unit);
+      if (cost === null) {
+        // Ingredients flagged "no price needed" don't count as a missing price
+        if (!Data.isPriceIgnored(ing.name)) hasGap = true;
+      } else { total += cost; hasCost = true; }
+    };
+    ings.forEach(tally);
+    extras.forEach(tally);
     if (!hasCost) return null;
-    const servings = r.servings || 1;
+    const servings = (r.servings || 1) * mult;
     return {
       total: Math.round(total * 100) / 100,
       partial: hasGap,
       perServing: Math.round((total / servings) * 100) / 100,
     };
+  }
+
+  // Total calories including any ticked optional extras
+  function _calcKcalTotal(r, optionalNames) {
+    if (r.kcalTotal == null) return null;
+    const extra = (r.optionalIngredients || [])
+      .filter(o => optionalNames && optionalNames.has(o.name))
+      .reduce((s, o) => s + (parseFloat(o.kcal) || 0), 0);
+    return Math.round(r.kcalTotal + extra);
   }
 
   // ── Render recipe list ───────────────
@@ -380,14 +458,93 @@ const Recipes = (() => {
       const scaledQty = (parseFloat(i.qty) || 0) * (multiplier || 1);
       const cost = i.qty ? Data.lookupPrice(i.name, scaledQty, i.unit) : null;
       const mismatch = cost === null && i.qty ? Data.lookupPriceMismatch(i.name, scaledQty, i.unit) : false;
-      const costStr = cost !== null ? `R ${cost.toFixed(2)}` : (mismatch ? '⚖ unit' : '—');
+      const ignored = Data.isPriceIgnored(i.name);
+      let costStr;
+      if (cost !== null) costStr = `R ${cost.toFixed(2)}`;
+      else if (ignored) costStr = '<span class="ing-cost-ignored">not priced</span>';
+      else if (mismatch) costStr = '⚖ unit';
+      else costStr = '—';
+      // Tapping an unpriced cost toggles "no price needed" for that ingredient
+      const toggle = cost === null
+        ? ` onclick="Recipes.toggleIgnorePrice('${_esc(i.name).replace(/'/g, "\\'")}')" title="${ignored ? 'Count this ingredient in pricing again' : 'Ignore this ingredient for pricing'}" style="cursor:pointer"`
+        : '';
       return `<li>
         <span class="ing-qty">${i.qty ? fmtQty(scaledQty) : ''}</span>
         <span class="ing-unit">${i.unit}</span>
         <span>${i.name}</span>
-        <span class="ing-cost">${costStr}</span>
+        <span class="ing-cost"${toggle}>${costStr}</span>
       </li>`;
     }).join('')}</ul>`;
+  }
+
+  function toggleIgnorePrice(name) {
+    Data.setIgnorePrice(name, !Data.isPriceIgnored(name));
+    if (_activeId) {
+      const r = Data.getRecipeById(_activeId);
+      if (r) {
+        const ingEl = document.getElementById('detail-ingredients');
+        if (ingEl) ingEl.innerHTML = _renderIngredients(parseIngredients(r.ingredients), _targetServings / _baseServings);
+        _updateDetailMeta(r);
+      }
+    }
+    App.toast(Data.isPriceIgnored(name) ? `"${name}" ignored for pricing` : `"${name}" counted in pricing again`);
+  }
+
+  function _optionalsHtml(r, multiplier) {
+    const opts = r.optionalIngredients || [];
+    if (!opts.length) return '';
+    const rows = opts.map((o, i) => {
+      const scaledQty = (parseFloat(o.qty) || 0) * (multiplier || 1);
+      const on = _selectedOptionals.has(o.name);
+      const cost = o.qty ? Data.lookupPrice(o.name, scaledQty, o.unit) : null;
+      const bits = [];
+      if (cost !== null) bits.push(`R ${cost.toFixed(2)}`);
+      if (o.kcal) bits.push(`${Math.round((parseFloat(o.kcal) || 0) * (multiplier || 1))} kcal`);
+      return `<li class="optional-row${on ? ' on' : ''}">
+        <input type="checkbox" class="optional-cb" ${on ? 'checked' : ''}
+          onchange="Recipes.toggleOptional(${i})" />
+        <span class="ing-qty">${o.qty ? fmtQty(scaledQty) : ''}</span>
+        <span class="ing-unit">${_esc(o.unit || '')}</span>
+        <span>${_esc(o.name)}</span>
+        <span class="ing-cost">${bits.join(' · ') || '—'}</span>
+      </li>`;
+    }).join('');
+    return `<div class="section-label">✨ OPTIONAL EXTRAS</div>
+      <ul class="ingredient-list" id="detail-optionals">${rows}</ul>`;
+  }
+
+  function toggleOptional(idx) {
+    if (!_activeId) return;
+    const r = Data.getRecipeById(_activeId);
+    if (!r) return;
+    const o = (r.optionalIngredients || [])[idx];
+    if (!o) return;
+    if (_selectedOptionals.has(o.name)) _selectedOptionals.delete(o.name);
+    else _selectedOptionals.add(o.name);
+    const mult = _targetServings / _baseServings;
+    const el = document.getElementById('detail-optionals');
+    if (el) el.outerHTML = _optionalsHtml(r, mult).replace(/^[\s\S]*?<ul /, '<ul ');
+    _updateDetailMeta(r);
+  }
+
+  // Refresh the cost + kcal chips in the detail header (servings / optionals changed)
+  function _updateDetailMeta(r) {
+    const mult = _targetServings / _baseServings;
+    const cost = _calcRecipeCost(r, mult, _selectedOptionals);
+    const costEl = document.getElementById('detail-cost');
+    if (costEl) {
+      costEl.innerHTML = cost
+        ? `${cost.partial ? '~' : ''}R ${cost.total.toFixed(2)} total · R ${cost.perServing.toFixed(2)}/serving${cost.partial ? ' ⚠' : ''}`
+        : '';
+    }
+    const kcalEl = document.getElementById('detail-kcal');
+    if (kcalEl) {
+      const kcal = _calcKcalTotal(r, _selectedOptionals);
+      const scaled = kcal != null ? Math.round(kcal * mult) : null;
+      kcalEl.textContent = scaled != null
+        ? `${scaled} kcal · ${Math.round(scaled / _targetServings)} kcal/serving`
+        : '— kcal';
+    }
   }
 
   function openDetail(id) {
@@ -396,6 +553,7 @@ const Recipes = (() => {
     _activeId = id;
     _baseServings   = r.servings || 1;
     _targetServings = r.servings || 1;
+    _selectedOptionals = new Set();
 
     const ings  = parseIngredients(r.ingredients);
     const steps = (r.method || '').split('\n').filter(s => s.trim());
@@ -410,10 +568,10 @@ const Recipes = (() => {
     const tags = (r.tags || '').split(',').map(t=>t.trim()).filter(Boolean)
       .map(t => `<span class="tag">${t}</span>`).join('');
 
-    const cost = _calcRecipeCost(r);
-    const costMeta = cost
-      ? `<span class="detail-cost">${cost.partial ? '~' : ''}R ${cost.total.toFixed(2)} total · R ${cost.perServing.toFixed(2)}/serving${cost.partial ? ' ⚠' : ''}</span>`
-      : '';
+    const cost = _calcRecipeCost(r, 1, _selectedOptionals);
+    const costMeta = `<span class="detail-cost" id="detail-cost">${cost
+      ? `${cost.partial ? '~' : ''}R ${cost.total.toFixed(2)} total · R ${cost.perServing.toFixed(2)}/serving${cost.partial ? ' ⚠' : ''}`
+      : ''}</span>`;
 
     document.getElementById('detail-content').innerHTML = `
       <h2 class="detail-name">${r.name}</h2>
@@ -426,7 +584,7 @@ const Recipes = (() => {
         </span>` : ''}
         ${r.prepMins ? `<span>⏱ ${r.prepMins}m prep</span>` : ''}
         ${r.cookMins ? `<span>🔥 ${r.cookMins}m cook</span>` : ''}
-        <span class="detail-kcal">${r.kcalTotal != null
+        <span class="detail-kcal" id="detail-kcal">${r.kcalTotal != null
           ? `${r.kcalTotal} kcal · ${Math.round(r.kcalTotal / (r.servings || 1))} kcal/serving`
           : '— kcal'}</span>
         ${costMeta}
@@ -441,6 +599,7 @@ const Recipes = (() => {
       </div>
       <div class="section-label">🥕 INGREDIENTS</div>
       <div id="detail-ingredients">${_renderIngredients(ings, 1)}</div>
+      ${_optionalsHtml(r, 1)}
       <div class="section-label">👨‍🍳 DIRECTIONS</div>
       ${stepsHtml}
       ${r.source ? `<p class="detail-source">Source: <a href="${r.source}" target="_blank">${r.source}</a></p>` : ''}
@@ -459,6 +618,9 @@ const Recipes = (() => {
     if (label) label.textContent = _targetServings + ' servings';
     const ingEl = document.getElementById('detail-ingredients');
     if (ingEl) ingEl.innerHTML = _renderIngredients(parseIngredients(r.ingredients), multiplier);
+    const optEl = document.getElementById('detail-optionals');
+    if (optEl) optEl.outerHTML = _optionalsHtml(r, multiplier).replace(/^[\s\S]*?<ul /, '<ul ');
+    _updateDetailMeta(r);
   }
 
   function openAddToPlanModal(id) {
@@ -665,6 +827,12 @@ const Recipes = (() => {
         <button type="button" class="btn-small" style="margin-top:4px" onclick="Recipes._addIngRow()">＋ Add ingredient</button>
       </div>
       <div class="form-group">
+        <label>Optional extras</label>
+        <p class="hint" style="margin:0 0 4px">Add-ins you sometimes use (e.g. chocolate chips). Tick them on the recipe to add their cost and calories.</p>
+        <div id="rf-opt-list"></div>
+        <button type="button" class="btn-small" style="margin-top:4px" onclick="Recipes._addOptRow()">＋ Add optional item</button>
+      </div>
+      <div class="form-group">
         <label>Method</label>
         <div id="rf-step-list"></div>
         <button type="button" class="btn-small" style="margin-top:4px" onclick="Recipes._addStepRow()">＋ Add step</button>
@@ -704,6 +872,7 @@ const Recipes = (() => {
       </div>
     `;
     _renderIngRows(r.ingredients);
+    _renderOptRows(r.optionalIngredients);
     _renderStepRows(r.method);
     document.getElementById('modal-overlay').classList.remove('hidden');
   }
@@ -750,15 +919,20 @@ const Recipes = (() => {
       tags: document.getElementById('rf-tags').value.trim(),
       source: document.getElementById('rf-src').value.trim(),
       kcalTotal: isNaN(kcalRaw) ? null : kcalRaw,
+      optionalIngredients: _collectOptionals(),
     };
+    const allNames = [
+      ...parseIngredients(recipe.ingredients),
+      ...recipe.optionalIngredients.map(o => ({ name: o.name })),
+    ];
     if (existingId) {
       Data.updateRecipe(recipe);
-      Data.ensurePriceBookEntries(parseIngredients(recipe.ingredients));
+      Data.ensurePriceBookEntries(allNames);
       App.toast('Recipe updated ✓');
       openDetail(existingId);
     } else {
       const saved = Data.addRecipe(recipe);
-      Data.ensurePriceBookEntries(parseIngredients(recipe.ingredients));
+      Data.ensurePriceBookEntries(allNames);
       App.toast('Recipe added ✓');
       openDetail(saved.id);
     }
@@ -863,5 +1037,6 @@ const Recipes = (() => {
            editCalories, cancelEditCalories, saveCalories, calculateCalories,
            openCookConfirm, _cookRefresh, _cookAddExtra, confirmCook,
            _addIngRow, _removeIngRow, _ingNameInput, _ingNameSelect, _ingHideDropdown,
-           _addStepRow, _removeStepRow, _moveStep };
+           _addStepRow, _removeStepRow, _moveStep,
+           _addOptRow, _removeOptRow, toggleOptional, toggleIgnorePrice };
 })();
