@@ -152,11 +152,9 @@ const Shopping = (() => {
 
   function _renderPriceDisplay(idx, item) {
     const card = Data.lookupPriceEntry(item.name);
-    if (!card || !card.prices || card.prices.length === 0) {
-      return `<div class="shop-price-display" id="shop-price-${idx}">
-        <button class="shop-price-set" onclick="Shopping.editPrice(${idx})">+ Set price</button>
-      </div>`;
-    }
+    // No known price — nothing to show. Entering the actual paid price above
+    // records one when the shop is confirmed.
+    if (!card || !card.prices || card.prices.length === 0) return '';
     const displayQty = item.actualQty != null ? item.actualQty : item.qty;
     const displayUnit = item.actualUnit || item.unit;
     const cost = Data.lookupPrice(item.name, displayQty, displayUnit);
@@ -185,7 +183,6 @@ const Shopping = (() => {
     }
     return `<div class="shop-price-display" id="shop-price-${idx}">
       ${costHtml}${perHtml}
-      <button class="shop-price-edit-btn" onclick="Shopping.editPrice(${idx})" title="Edit price">✏</button>
     </div>`;
   }
 
@@ -290,6 +287,8 @@ const Shopping = (() => {
       </div>
       ${multHint}` : '';
 
+    const priceHtml = item.pantryUsed ? '' : _renderPriceDisplay(item._idx, item);
+
     return `
       <div class="shop-item ${item.checked ? 'checked' : ''}" id="shop-item-${item._idx}">
         <input type="checkbox" ${item.checked ? 'checked' : ''}
@@ -301,50 +300,10 @@ const Shopping = (() => {
           </div>
           ${usePantryBtn}
           ${qtyRow}
-          ${!item.pantryUsed ? `<div class="shop-price-row">${_renderPriceDisplay(item._idx, item)}</div>` : ''}
+          ${priceHtml ? `<div class="shop-price-row">${priceHtml}</div>` : ''}
           ${sourcesHtml}
         </div>
       </div>`;
-  }
-
-  function editPrice(idx) {
-    const items = Data.getShoppingList();
-    const item = items[idx];
-    if (!item) return;
-    const card = Data.lookupPriceEntry(item.name);
-    const firstPrice = (card && card.prices && card.prices.length > 0) ? card.prices[0] : null;
-    const units = ['g','kg','ml','l','item','tsp','tbsp','clove','head','loaf'];
-    const unitOpts = units.map(u =>
-      `<option value="${u}" ${(firstPrice ? firstPrice.unit : 'item') === u ? 'selected' : ''}>${u}</option>`
-    ).join('');
-    const priceEl = document.getElementById('shop-price-' + idx);
-    if (!priceEl) return;
-    priceEl.innerHTML = `
-      <div class="shop-price-form">
-        <span class="shop-pf-label">R</span>
-        <input type="number" id="sp-price-${idx}" class="shop-pf-input"
-          step="0.01" min="0" value="${firstPrice ? firstPrice.pricePerUnit : ''}" placeholder="0.00" />
-        <span class="shop-pf-sep">per</span>
-        <select id="sp-unit-${idx}" class="shop-pf-unit">${unitOpts}</select>
-        <input type="text" id="sp-retailer-${idx}" class="shop-pf-retailer"
-          value="${_esc(firstPrice ? (firstPrice.retailer || '') : '')}" placeholder="Store" maxlength="20" />
-        <button class="btn-mini btn-mini-primary" onclick="Shopping.savePrice(${idx})">Save</button>
-        <button class="btn-mini" onclick="Shopping.render()">✕</button>
-      </div>`;
-    document.getElementById('sp-price-' + idx)?.focus();
-  }
-
-  function savePrice(idx) {
-    const items = Data.getShoppingList();
-    const item = items[idx];
-    if (!item) return;
-    const price = parseFloat(document.getElementById('sp-price-' + idx)?.value);
-    const unit = document.getElementById('sp-unit-' + idx)?.value || 'item';
-    const retailer = (document.getElementById('sp-retailer-' + idx)?.value || '').trim();
-    if (isNaN(price) || price < 0) { App.toast('Enter a valid price', 'warn'); return; }
-    Data.setPriceEntry(item.name.toLowerCase().trim(), { unit, pricePerUnit: price, totalPrice: price, totalQty: 1, retailer });
-    render();
-    App.toast('Price saved ✓');
   }
 
   function _renderTotal(items) {
@@ -754,5 +713,5 @@ const Shopping = (() => {
     setActualPrice(idx, input.value);
   }
 
-  return { render, toggle, toggleSources, clearChecked, editPrice, savePrice, markPantryUsed, setActualPrice, appendNineNine, openAddAdHocItem, _adhocAutocomplete, _adhocSelect, saveAdHocItem, openConfirmShop, confirmShop, setRecipeFilter, toggleRecipeFilter, _setConfirmQty, _setConfirmUnit, setActualQty, setActualUnit, setQtyMultiplier, toggleActionMenu, closeActionMenu, confirmClearChecked, checkAll, uncheckAll };
+  return { render, toggle, toggleSources, clearChecked, markPantryUsed, setActualPrice, appendNineNine, openAddAdHocItem, _adhocAutocomplete, _adhocSelect, saveAdHocItem, openConfirmShop, confirmShop, setRecipeFilter, toggleRecipeFilter, _setConfirmQty, _setConfirmUnit, setActualQty, setActualUnit, setQtyMultiplier, toggleActionMenu, closeActionMenu, confirmClearChecked, checkAll, uncheckAll };
 })();

@@ -477,7 +477,11 @@ const Data = (() => {
     if (typeof Recipes === 'undefined') { App.toast('Recipes module not loaded', 'warn'); return; }
     let count = 0;
     (_db.recipes || []).forEach(r => {
-      const parsed = Recipes.parseIngredients(r.ingredients);
+      // Optional extras are real ingredients too — they need price book entries
+      const parsed = [
+        ...Recipes.parseIngredients(r.ingredients),
+        ...(r.optionalIngredients || []),
+      ];
       parsed.forEach(ing => {
         if (!ing.name) return;
         const lower = ing.name.toLowerCase().trim();
@@ -944,34 +948,6 @@ const Data = (() => {
     save();
   }
 
-  // Adds the recipes defined in js/bundled-recipes.js, skipping any already
-  // present (by id) and any the user has deliberately deleted. Once added they
-  // reach Drive through the normal sync.
-  function addBundledRecipes() {
-    if (typeof BUNDLED_RECIPES === 'undefined') {
-      App.toast('No bundled recipes available', 'warn');
-      return;
-    }
-    const existing = new Set((_db.recipes || []).map(r => r.id));
-    const deleted = new Set(_db.deletedRecipeIds || []);
-    let added = 0;
-    BUNDLED_RECIPES.forEach(r => {
-      if (existing.has(r.id) || deleted.has(r.id)) return;
-      _db.recipes.push(JSON.parse(JSON.stringify(r)));
-      added++;
-    });
-    if (added === 0) {
-      App.toast('Those recipes are already in your book');
-      return;
-    }
-    save();
-    if (typeof Recipes !== 'undefined') {
-      BUNDLED_RECIPES.forEach(r => ensurePriceBookEntries(Recipes.parseIngredients(r.ingredients)));
-      Recipes.render();
-    }
-    App.toast(`${added} recipe${added !== 1 ? 's' : ''} added ✓`);
-  }
-
   function loadStarterPrices() {
     if (_db.priceBook && _db.priceBook.length > 0) return;
     const d = '2026-06-29';
@@ -1093,7 +1069,7 @@ const Data = (() => {
     loadStarterData, loadStarterPrices, getClientId, setClientId,
     getPriceBook, setPriceEntry, removePriceEntry, addIngredientEntry, removeIngredient,
     lookupPriceEntry, lookupPrice, lookupPriceMismatch, ensurePriceBookEntries, syncAllRecipeIngredients,
-    isPriceIgnored, setIgnorePrice, requestPersistence, flushSync, addBundledRecipes,
+    isPriceIgnored, setIgnorePrice, requestPersistence, flushSync,
     setPantryItem, addPantryBatch, deductPantryFIFO, getFIFO, setFIFO,
     removePantryItem, clearPantryPerishables, getPantryItem,
     getSpendLog, logSpend, clearSpendLog, updateSpendEntry, deleteSpendEntry,

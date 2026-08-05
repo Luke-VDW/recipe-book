@@ -255,16 +255,30 @@ const Recipes = (() => {
     return { qty, unit: baseUnit };
   }
 
+  // Main ingredients plus optional extras, in one list with stable indices so
+  // the cook modal's checkboxes line up with what confirmCook() deducts.
+  function _cookIngList(r) {
+    return [
+      ...parseIngredients(r.ingredients),
+      ...(r.optionalIngredients || []).map(o => ({
+        qty: o.qty, unit: o.unit, name: o.name, optional: true,
+      })),
+    ];
+  }
+
   function _buildIngRows(r, servings) {
-    const ings = parseIngredients(r.ingredients);
+    const ings = _cookIngList(r);
     const base = r.servings || 1;
     const mult = (parseFloat(servings) || 1) / base;
     if (!ings.length) return '<p style="color:var(--text-muted);font-size:0.88rem;padding:8px 0">No ingredients listed.</p>';
 
     return ings.map((ing, i) => {
+      // Optional extras start ticked only if they were selected on the recipe
+      const deductOn = !ing.optional || _selectedOptionals.has(ing.name);
+      const optTag = ing.optional ? '<span class="cook-opt-tag">optional</span>' : '';
       if (!ing.qty && ing.qty !== 0) {
         return `<div class="cook-ing-row cook-ing-untracked">
-        <span class="cook-ing-name">${_esc(ing.name)}</span>
+        <span class="cook-ing-name">${_esc(ing.name)}${optTag}</span>
         <span class="cook-ing-status">no qty — skip</span>
       </div>`;
       }
@@ -273,7 +287,7 @@ const Recipes = (() => {
 
       if (!p || p.qty <= 0) {
         return `<div class="cook-ing-row cook-ing-untracked">
-        <span class="cook-ing-name">${_esc(ing.name)}</span>
+        <span class="cook-ing-name">${_esc(ing.name)}${optTag}</span>
         <span class="cook-ing-qty">${fmtQty(scaledQty)} ${_esc(ing.unit || '')}</span>
         <span class="cook-ing-status">not tracked</span>
       </div>`;
@@ -293,8 +307,8 @@ const Recipes = (() => {
       if (pBase >= dBase) {
         const remain = _convertFromBase(pBase - dBase, pBaseUnit, p.unit);
         return `<div class="cook-ing-row cook-ing-normal">
-        <input type="checkbox" id="cook-deduct-${i}" class="cook-deduct-cb" checked title="Untick to skip pantry deduction" />
-        <span class="cook-ing-name">${_esc(ing.name)}</span>
+        <input type="checkbox" id="cook-deduct-${i}" class="cook-deduct-cb" ${deductOn ? 'checked' : ''} title="Untick to skip pantry deduction" />
+        <span class="cook-ing-name">${_esc(ing.name)}${optTag}</span>
         <span class="cook-ing-qty">${fmtQty(scaledQty)} ${_esc(ing.unit || '')}</span>
         <span class="cook-ing-status">→ ${fmtQty(remain.qty)} ${_esc(remain.unit)} left</span>
       </div>`;
@@ -302,8 +316,8 @@ const Recipes = (() => {
 
       // Shortfall
       return `<div class="cook-ing-row cook-ing-shortfall">
-      <input type="checkbox" id="cook-deduct-${i}" class="cook-deduct-cb" checked title="Untick to skip pantry deduction" />
-      <span class="cook-ing-name">${_esc(ing.name)}</span>
+      <input type="checkbox" id="cook-deduct-${i}" class="cook-deduct-cb" ${deductOn ? 'checked' : ''} title="Untick to skip pantry deduction" />
+      <span class="cook-ing-name">${_esc(ing.name)}${optTag}</span>
       <span class="cook-ing-qty">${fmtQty(scaledQty)} ${_esc(ing.unit || '')} needed</span>
       <div class="cook-shortfall-row">
         <span class="cook-shortfall-warn">⚠ only ${fmtQty(p.qty)} ${_esc(p.unit)} tracked</span>
@@ -497,16 +511,23 @@ const Recipes = (() => {
       const scaledQty = (parseFloat(o.qty) || 0) * (multiplier || 1);
       const on = _selectedOptionals.has(o.name);
       const cost = o.qty ? Data.lookupPrice(o.name, scaledQty, o.unit) : null;
-      const bits = [];
-      if (cost !== null) bits.push(`R ${cost.toFixed(2)}`);
-      if (o.kcal) bits.push(`${Math.round((parseFloat(o.kcal) || 0) * (multiplier || 1))} kcal`);
+      const mismatch = cost === null && o.qty ? Data.lookupPriceMismatch(o.name, scaledQty, o.unit) : false;
+      const ignored = Data.isPriceIgnored(o.name);
+      let costStr;
+      if (cost !== null) costStr = `R ${cost.toFixed(2)}`;
+      else if (ignored) costStr = '<span class="ing-cost-ignored">not priced</span>';
+      else if (mismatch) costStr = '⚖ unit';
+      else costStr = '—';
+      const toggle = cost === null
+        ? ` onclick="Recipes.toggleIgnorePrice('${_esc(o.name).replace(/'/g, "\\'")}')" title="${ignored ? 'Count this ingredient in pricing again' : 'Ignore this ingredient for pricing'}" style="cursor:pointer"`
+        : '';
       return `<li class="optional-row${on ? ' on' : ''}">
         <input type="checkbox" class="optional-cb" ${on ? 'checked' : ''}
           onchange="Recipes.toggleOptional(${i})" />
         <span class="ing-qty">${o.qty ? fmtQty(scaledQty) : ''}</span>
         <span class="ing-unit">${_esc(o.unit || '')}</span>
         <span>${_esc(o.name)}</span>
-        <span class="ing-cost">${bits.join(' · ') || '—'}</span>
+        <span class="ing-cost"${toggle}>${costStr}</span>
       </li>`;
     }).join('');
     return `<div class="section-label">✨ OPTIONAL EXTRAS</div>
@@ -738,10 +759,13 @@ const Recipes = (() => {
     const base = r.servings || 1;
     const mult = servings / base;
 
-    parseIngredients(r.ingredients).forEach((ing, i) => {
+    // Same combined list (ingredients + optional extras) the modal rendered
+    _cookIngList(r).forEach((ing, i) => {
       if (!ing.qty && ing.qty !== 0) return;
       const deductCb = document.getElementById('cook-deduct-' + i);
       if (deductCb && !deductCb.checked) return; // user opted this ingredient out
+      // An optional extra with no checkbox rendered (not in pantry) is skipped
+      if (!deductCb && ing.optional && !_selectedOptionals.has(ing.name)) return;
       _deductIngredient(ing.name, (parseFloat(ing.qty) || 0) * mult, ing.unit || '', i);
     });
 
