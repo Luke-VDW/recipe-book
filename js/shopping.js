@@ -46,12 +46,18 @@ const Shopping = (() => {
                    'oat milk','almond milk','coconut milk','soy milk'],
   };
 
+  // Keyword guess only — callers should prefer categoryFor(), which lets a
+  // category saved on the Ingredient Book card override the guess.
   function guessCategory(name) {
     const lower = name.toLowerCase();
     for (const [cat, keywords] of Object.entries(CAT_MAP)) {
       if (keywords.some(k => lower.includes(k))) return cat;
     }
     return 'other';
+  }
+
+  function categoryFor(name) {
+    return Data.getIngredientCategory(name) || guessCategory(name);
   }
 
   function fmtQty(q) {
@@ -369,7 +375,7 @@ const Shopping = (() => {
     const groups = {};
     visibleItems.forEach(item => {
       const origIdx = items.indexOf(item);
-      const cat = guessCategory(item.name);
+      const cat = categoryFor(item.name);
       if (!groups[cat]) groups[cat] = [];
       groups[cat].push({ ...item, _idx: origIdx });
     });
@@ -713,5 +719,5 @@ const Shopping = (() => {
     setActualPrice(idx, input.value);
   }
 
-  return { render, toggle, toggleSources, clearChecked, markPantryUsed, setActualPrice, appendNineNine, openAddAdHocItem, _adhocAutocomplete, _adhocSelect, saveAdHocItem, openConfirmShop, confirmShop, setRecipeFilter, toggleRecipeFilter, _setConfirmQty, _setConfirmUnit, setActualQty, setActualUnit, setQtyMultiplier, toggleActionMenu, closeActionMenu, confirmClearChecked, checkAll, uncheckAll };
+  return { render, guessCategory, categoryFor, toggle, toggleSources, clearChecked, markPantryUsed, setActualPrice, appendNineNine, openAddAdHocItem, _adhocAutocomplete, _adhocSelect, saveAdHocItem, openConfirmShop, confirmShop, setRecipeFilter, toggleRecipeFilter, _setConfirmQty, _setConfirmUnit, setActualQty, setActualUnit, setQtyMultiplier, toggleActionMenu, closeActionMenu, confirmClearChecked, checkAll, uncheckAll };
 })();

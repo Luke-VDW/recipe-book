@@ -27,30 +27,61 @@ const Recipes = (() => {
   let _ingCount = 0;
   let _stepCount = 0;
 
+  // Optional subsection headings are stored inline as "## Icing" entries.
+  // parseIngredients() strips them so every existing consumer (costing,
+  // shopping list, pantry, price book) keeps seeing a flat ingredient list.
+  const SECTION_PREFIX = '##';
+  function _isSectionToken(s) { return (s || '').trim().startsWith(SECTION_PREFIX); }
+  function _sectionName(s)    { return (s || '').trim().slice(SECTION_PREFIX.length).trim(); }
+
+  function _parseOne(s) {
+    if (!s) return null;
+
+    // "500g beef mince" — qty glued to unit
+    let m = s.match(new RegExp(`^(\\d+(?:[.,]\\d+)?)\\s*(${UNIT_RE})\\.?\\s+(.+)$`, 'i'));
+    if (m) return { qty: parseFloat(m[1].replace(',','.')), unit: normaliseUnit(m[2]), name: m[3].trim() };
+
+    // "0.25tsp nutmeg" — no space
+    m = s.match(new RegExp(`^(\\d+(?:[.,]\\d+)?)(${UNIT_RE})\\.?(.+)$`, 'i'));
+    if (m) return { qty: parseFloat(m[1].replace(',','.')), unit: normaliseUnit(m[2]), name: m[3].trim() };
+
+    // "2 cloves garlic" — qty space unit space name
+    m = s.match(new RegExp(`^(\\d+(?:[.,]\\d+)?)\\s+(${UNIT_RE})\\.?\\s+(.+)$`, 'i'));
+    if (m) return { qty: parseFloat(m[1].replace(',','.')), unit: normaliseUnit(m[2]), name: m[3].trim() };
+
+    // "3 eggs" — qty + name only
+    m = s.match(/^(\d+(?:[.,]\d+)?)\s+(.+)$/);
+    if (m) return { qty: parseFloat(m[1].replace(',','.')), unit: '', name: m[2].trim() };
+
+    return { qty: '', unit: '', name: s };
+  }
+
   function parseIngredients(text) {
     if (!text) return [];
-    return text.split(';').map(raw => {
+    return text.split(';')
+      .map(raw => raw.trim())
+      .filter(s => s && !_isSectionToken(s))
+      .map(_parseOne)
+      .filter(Boolean);
+  }
+
+  // Grouped view for display and editing: [{ section: 'Icing', items: [...] }]
+  function parseIngredientsSectioned(text) {
+    const groups = [];
+    let current = { section: '', items: [] };
+    (text || '').split(';').forEach(raw => {
       const s = raw.trim();
-      if (!s) return null;
-
-      // "500g beef mince" — qty glued to unit
-      let m = s.match(new RegExp(`^(\\d+(?:[.,]\\d+)?)\\s*(${UNIT_RE})\\.?\\s+(.+)$`, 'i'));
-      if (m) return { qty: parseFloat(m[1].replace(',','.')), unit: normaliseUnit(m[2]), name: m[3].trim() };
-
-      // "0.25tsp nutmeg" — no space
-      m = s.match(new RegExp(`^(\\d+(?:[.,]\\d+)?)(${UNIT_RE})\\.?(.+)$`, 'i'));
-      if (m) return { qty: parseFloat(m[1].replace(',','.')), unit: normaliseUnit(m[2]), name: m[3].trim() };
-
-      // "2 cloves garlic" — qty space unit space name
-      m = s.match(new RegExp(`^(\\d+(?:[.,]\\d+)?)\\s+(${UNIT_RE})\\.?\\s+(.+)$`, 'i'));
-      if (m) return { qty: parseFloat(m[1].replace(',','.')), unit: normaliseUnit(m[2]), name: m[3].trim() };
-
-      // "3 eggs" — qty + name only
-      m = s.match(/^(\d+(?:[.,]\d+)?)\s+(.+)$/);
-      if (m) return { qty: parseFloat(m[1].replace(',','.')), unit: '', name: m[2].trim() };
-
-      return { qty: '', unit: '', name: s };
-    }).filter(Boolean);
+      if (!s) return;
+      if (_isSectionToken(s)) {
+        if (current.section || current.items.length) groups.push(current);
+        current = { section: _sectionName(s), items: [] };
+        return;
+      }
+      const parsed = _parseOne(s);
+      if (parsed) current.items.push(parsed);
+    });
+    if (current.section || current.items.length) groups.push(current);
+    return groups;
   }
 
   function normaliseUnit(u) {
@@ -131,9 +162,10 @@ const Recipes = (() => {
     </div>`;
   }
 
-  function _ingNameInput(n) {
-    const input = document.getElementById('ing-name-' + n);
-    const dd    = document.getElementById('ing-name-dd-' + n);
+  // ── Ingredient-name autocomplete (shared by ingredient + optional rows) ──
+  function _nameDropdownInput(inputPrefix, ddPrefix, n, selectFn) {
+    const input = document.getElementById(inputPrefix + n);
+    const dd    = document.getElementById(ddPrefix + n);
     if (!input || !dd) return;
     const q = input.value.trim().toLowerCase();
     if (!q) { dd.classList.add('hidden'); dd.innerHTML = ''; return; }
@@ -144,34 +176,50 @@ const Recipes = (() => {
     if (matches.length === 0) { dd.classList.add('hidden'); dd.innerHTML = ''; return; }
     dd.innerHTML = matches.map(name =>
       `<div class="ing-name-suggestion" data-val="${_esc(name)}"
-         onpointerdown="Recipes._ingNameSelect(${n},this.dataset.val)">${_esc(name)}</div>`
+         onpointerdown="Recipes.${selectFn}(${n},this.dataset.val)">${_esc(name)}</div>`
     ).join('');
     dd.classList.remove('hidden');
   }
 
-  function _ingNameSelect(n, value) {
-    const input = document.getElementById('ing-name-' + n);
-    const dd    = document.getElementById('ing-name-dd-' + n);
+  function _nameDropdownSelect(inputPrefix, ddPrefix, n, value) {
+    const input = document.getElementById(inputPrefix + n);
+    const dd    = document.getElementById(ddPrefix + n);
     if (input) input.value = value;
     if (dd)    { dd.classList.add('hidden'); dd.innerHTML = ''; }
   }
 
-  function _ingHideDropdown(n) {
+  function _nameDropdownHide(ddPrefix, n) {
     // Delay so onpointerdown fires before blur hides the list
     setTimeout(() => {
-      const dd = document.getElementById('ing-name-dd-' + n);
+      const dd = document.getElementById(ddPrefix + n);
       if (dd) { dd.classList.add('hidden'); dd.innerHTML = ''; }
     }, 150);
   }
 
+  function _ingNameInput(n)     { _nameDropdownInput('ing-name-', 'ing-name-dd-', n, '_ingNameSelect'); }
+  function _ingNameSelect(n, v) { _nameDropdownSelect('ing-name-', 'ing-name-dd-', n, v); }
+  function _ingHideDropdown(n)  { _nameDropdownHide('ing-name-dd-', n); }
+
+  function _sectionRowHtml(n, name) {
+    return `<div class="ing-section-row" id="ing-row-${n}">
+      <span class="ing-section-mark">§</span>
+      <input type="text" id="ing-section-${n}" class="ing-section-input"
+        value="${_esc(name || '')}" placeholder="Section name — e.g. Icing" />
+      <button type="button" class="btn-row-remove" onclick="Recipes._removeIngRow(${n})">✕</button>
+    </div>`;
+  }
+
   function _renderIngRows(ingredientsStr) {
     _ingCount = 0;
-    const ings = parseIngredients(ingredientsStr || '');
-    if (ings.length === 0) {
-      _addIngRow('', 'item', '');
-    } else {
-      ings.forEach(ing => _addIngRow(ing.qty, ing.unit, ing.name));
-    }
+    const list = document.getElementById('rf-ing-list');
+    if (list) list.innerHTML = '';
+    const tokens = (ingredientsStr || '').split(';').map(s => s.trim()).filter(Boolean);
+    if (tokens.length === 0) { _addIngRow('', 'item', ''); return; }
+    tokens.forEach(tok => {
+      if (_isSectionToken(tok)) { _addSectionRow(_sectionName(tok)); return; }
+      const p = _parseOne(tok);
+      if (p) _addIngRow(p.qty, p.unit, p.name);
+    });
   }
 
   function _addIngRow(qty, unit, name) {
@@ -179,6 +227,15 @@ const Recipes = (() => {
     if (!list) return;
     const n = _ingCount++;
     list.insertAdjacentHTML('beforeend', _ingRowHtml(n, qty, unit, name));
+  }
+
+  // Section rows share the ing-row-N id space so _removeIngRow works for both
+  function _addSectionRow(name) {
+    const list = document.getElementById('rf-ing-list');
+    if (!list) return;
+    const n = _ingCount++;
+    list.insertAdjacentHTML('beforeend', _sectionRowHtml(n, name));
+    if (name === undefined) document.getElementById('ing-section-' + n)?.focus();
   }
 
   function _removeIngRow(n) {
@@ -197,13 +254,22 @@ const Recipes = (() => {
       <input type="number" id="opt-qty-${n}" class="ing-qty-input" min="0" step="0.01"
         value="${qty != null && qty !== '' ? qty : ''}" placeholder="qty" />
       <select id="opt-unit-${n}" class="ing-unit-select">${unitOpts}</select>
-      <input type="text" id="opt-name-${n}" class="ing-name-input"
-        value="${_esc(name || '')}" placeholder="e.g. chocolate chips" />
+      <div class="ing-name-wrap">
+        <input type="text" id="opt-name-${n}" class="ing-name-input"
+          value="${_esc(name || '')}" placeholder="e.g. chocolate chips" autocomplete="off"
+          oninput="Recipes._optNameInput(${n})"
+          onblur="Recipes._optHideDropdown(${n})" />
+        <div class="ing-name-dropdown hidden" id="opt-name-dd-${n}"></div>
+      </div>
       <input type="number" id="opt-kcal-${n}" class="opt-kcal-input" min="0" step="1"
         value="${kcal != null && kcal !== '' ? kcal : ''}" placeholder="kcal" title="Calories this add-in contributes in total" />
       <button type="button" class="btn-row-remove" onclick="Recipes._removeOptRow(${n})">✕</button>
     </div>`;
   }
+
+  function _optNameInput(n)     { _nameDropdownInput('opt-name-', 'opt-name-dd-', n, '_optNameSelect'); }
+  function _optNameSelect(n, v) { _nameDropdownSelect('opt-name-', 'opt-name-dd-', n, v); }
+  function _optHideDropdown(n)  { _nameDropdownHide('opt-name-dd-', n); }
 
   function _renderOptRows(optionals) {
     _optCount = 0;
@@ -466,9 +532,21 @@ const Recipes = (() => {
   }
 
   // ── Recipe detail view ───────────────
-  function _renderIngredients(ings, multiplier) {
-    if (!ings.length) return '<p class="hint" style="padding:10px">No ingredients listed.</p>';
-    return `<ul class="ingredient-list">${ings.map(i => {
+  // Takes the raw ingredients string so subsection headings can be rendered.
+  function _renderIngredients(ingredientsStr, multiplier) {
+    const groups = parseIngredientsSectioned(ingredientsStr);
+    const count = groups.reduce((s, g) => s + g.items.length, 0);
+    if (!count) return '<p class="hint" style="padding:10px">No ingredients listed.</p>';
+    const listHtml = items => `<ul class="ingredient-list">${items.map(_ingredientRowHtml(multiplier)).join('')}</ul>`;
+    // Plain list when there are no subsections at all
+    if (groups.length === 1 && !groups[0].section) return listHtml(groups[0].items);
+    return groups.map(g =>
+      `${g.section ? `<div class="ing-subsection">${_esc(g.section)}</div>` : ''}${g.items.length ? listHtml(g.items) : ''}`
+    ).join('');
+  }
+
+  function _ingredientRowHtml(multiplier) {
+    return i => {
       const scaledQty = (parseFloat(i.qty) || 0) * (multiplier || 1);
       const cost = i.qty ? Data.lookupPrice(i.name, scaledQty, i.unit) : null;
       const mismatch = cost === null && i.qty ? Data.lookupPriceMismatch(i.name, scaledQty, i.unit) : false;
@@ -488,7 +566,7 @@ const Recipes = (() => {
         <span>${i.name}</span>
         <span class="ing-cost"${toggle}>${costStr}</span>
       </li>`;
-    }).join('')}</ul>`;
+    };
   }
 
   function toggleIgnorePrice(name) {
@@ -497,7 +575,7 @@ const Recipes = (() => {
       const r = Data.getRecipeById(_activeId);
       if (r) {
         const ingEl = document.getElementById('detail-ingredients');
-        if (ingEl) ingEl.innerHTML = _renderIngredients(parseIngredients(r.ingredients), _targetServings / _baseServings);
+        if (ingEl) ingEl.innerHTML = _renderIngredients(r.ingredients, _targetServings / _baseServings);
         _updateDetailMeta(r);
       }
     }
@@ -576,7 +654,6 @@ const Recipes = (() => {
     _targetServings = r.servings || 1;
     _selectedOptionals = new Set();
 
-    const ings  = parseIngredients(r.ingredients);
     const steps = (r.method || '').split('\n').filter(s => s.trim());
 
     const stepsHtml = steps.length
@@ -619,7 +696,7 @@ const Recipes = (() => {
         <button class="btn-secondary detail-action-full" onclick="Recipes.openCookConfirm('${r.id}')">✅ Cooked</button>
       </div>
       <div class="section-label">🥕 INGREDIENTS</div>
-      <div id="detail-ingredients">${_renderIngredients(ings, 1)}</div>
+      <div id="detail-ingredients">${_renderIngredients(r.ingredients, 1)}</div>
       ${_optionalsHtml(r, 1)}
       <div class="section-label">👨‍🍳 DIRECTIONS</div>
       ${stepsHtml}
@@ -638,7 +715,7 @@ const Recipes = (() => {
     const label = document.getElementById('detail-servings-label');
     if (label) label.textContent = _targetServings + ' servings';
     const ingEl = document.getElementById('detail-ingredients');
-    if (ingEl) ingEl.innerHTML = _renderIngredients(parseIngredients(r.ingredients), multiplier);
+    if (ingEl) ingEl.innerHTML = _renderIngredients(r.ingredients, multiplier);
     const optEl = document.getElementById('detail-optionals');
     if (optEl) optEl.outerHTML = _optionalsHtml(r, multiplier).replace(/^[\s\S]*?<ul /, '<ul ');
     _updateDetailMeta(r);
@@ -848,7 +925,10 @@ const Recipes = (() => {
       <div class="form-group">
         <label>Ingredients</label>
         <div id="rf-ing-list"></div>
-        <button type="button" class="btn-small" style="margin-top:4px" onclick="Recipes._addIngRow()">＋ Add ingredient</button>
+        <div class="rf-ing-btns">
+          <button type="button" class="btn-small" onclick="Recipes._addIngRow()">＋ Add ingredient</button>
+          <button type="button" class="btn-small" onclick="Recipes._addSectionRow()" title="Group the ingredients below this point, e.g. Cake / Icing">§ Add section</button>
+        </div>
       </div>
       <div class="form-group">
         <label>Optional extras</label>
@@ -903,8 +983,17 @@ const Recipes = (() => {
 
   function _collectIngredients() {
     const parts = [];
-    document.querySelectorAll('#rf-ing-list .ing-row').forEach(row => {
+    const list = document.getElementById('rf-ing-list');
+    if (!list) return '';
+    // Walk children in DOM order so section headings keep their position
+    Array.from(list.children).forEach(row => {
       const n = row.id.replace('ing-row-', '');
+      if (row.classList.contains('ing-section-row')) {
+        // Semicolons would break the delimiter, so strip them from the label
+        const sec = (document.getElementById('ing-section-' + n)?.value || '').replace(/;/g, '').trim();
+        if (sec) parts.push(SECTION_PREFIX + ' ' + sec);
+        return;
+      }
       const ingName = (document.getElementById('ing-name-' + n)?.value || '').trim();
       const ingQty  = (document.getElementById('ing-qty-' + n)?.value || '').trim();
       const ingUnit = document.getElementById('ing-unit-' + n)?.value || '';
@@ -1057,10 +1146,11 @@ const Recipes = (() => {
   }
 
   return { render, filter, openDetail, openAddModal, openEditModal, saveModal, confirmDelete,
-           parseIngredients, setServings, openAddToPlanModal, confirmAddToPlan,
+           parseIngredients, parseIngredientsSectioned, setServings, openAddToPlanModal, confirmAddToPlan,
            editCalories, cancelEditCalories, saveCalories, calculateCalories,
            openCookConfirm, _cookRefresh, _cookAddExtra, confirmCook,
            _addIngRow, _removeIngRow, _ingNameInput, _ingNameSelect, _ingHideDropdown,
            _addStepRow, _removeStepRow, _moveStep,
-           _addOptRow, _removeOptRow, toggleOptional, toggleIgnorePrice };
+           _addOptRow, _removeOptRow, toggleOptional, toggleIgnorePrice,
+           _optNameInput, _optNameSelect, _optHideDropdown, _addSectionRow };
 })();

@@ -117,7 +117,6 @@ const App = (() => {
     // Load data
     Data.load();
     Data.loadStarterData();
-    Data.loadStarterPrices();
 
     // Ask the browser to keep our storage (PWAs can otherwise be evicted)
     Data.requestPersistence();

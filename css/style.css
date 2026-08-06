@@ -1278,6 +1278,44 @@ input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; marg
 .confirm-item-qty-wrap { display: inline-flex; align-items: center; gap: 4px; }
 .confirm-item-unit { font-size: 0.85rem; color: var(--text-muted); }
 
+/* ── Ingredient subsections ── */
+.ing-subsection {
+  font-size: .78rem; font-weight: 700; letter-spacing: .04em;
+  text-transform: uppercase; color: var(--dk-green);
+  background: var(--lt-green); padding: 6px 14px; margin-top: 8px;
+}
+.ing-subsection + .ingredient-list { border-radius: 0 0 var(--radius) var(--radius); }
+/* Section row in the recipe form */
+.ing-section-row {
+  display: flex; align-items: center; gap: 6px; margin-bottom: 6px;
+  background: var(--lt-green); border-radius: var(--radius-sm); padding: 4px 6px;
+}
+.ing-section-mark { font-weight: 800; color: var(--dk-green); font-size: .9rem; flex-shrink: 0; }
+.ing-section-input {
+  flex: 1; min-width: 0; padding: 5px 8px; font-size: .88rem; font-weight: 600;
+  border: 1px solid var(--border); border-radius: var(--radius-sm);
+  background: var(--surface); color: var(--dk-green);
+}
+.rf-ing-btns { display: flex; gap: 6px; margin-top: 4px; flex-wrap: wrap; }
+
+/* ── Ingredient book: category row ── */
+.pb-cat-row { display: flex; align-items: center; gap: 8px; padding: 6px 12px 0; }
+.pb-cat-label { font-size: .75rem; color: var(--text-muted); font-weight: 600; flex-shrink: 0; }
+.pb-cat-select {
+  flex: 1; min-width: 0; padding: 4px 6px; font-size: .8rem;
+  border: 1px solid var(--border); border-radius: 6px;
+  background: var(--surface); color: var(--text); outline: none;
+}
+.pb-cat-select:focus { border-color: var(--md-green); }
+.pb-cat-auto { font-size: .68rem; color: var(--text-muted); font-style: italic; flex-shrink: 0; }
+
+/* ── Planner search result meta ── */
+.treat-search-meta { display: flex; align-items: center; gap: 4px; flex-shrink: 0; flex-wrap: wrap; justify-content: flex-end; }
+.treat-search-tag {
+  font-size: .68rem; background: var(--surface-alt); color: var(--text-muted);
+  border: 1px solid var(--border); padding: 1px 6px; border-radius: 10px;
+}
+
 /* ── Optional extras (recipe detail + form) ── */
 .optional-row { opacity: .72; transition: opacity .15s; align-items: center !important; }
 .optional-row.on { opacity: 1; }

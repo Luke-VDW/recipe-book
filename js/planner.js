@@ -6,7 +6,6 @@ const Planner = (() => {
 
   let _currentWeek = 1;
   let _currentTab  = 'meals'; // 'meals' | 'treats' | 'summary'
-  let _recipeFilter = '';
   let _filterTimer = null;
   let _pendingSlots = {}; // key: "week-day-meal" → count of pending empty selects
 
@@ -194,6 +193,9 @@ const Planner = (() => {
     const plannerView = document.getElementById('view-planner');
     if (plannerView) plannerView.classList.toggle('meals-active', _currentTab === 'meals');
     if (plannerView) plannerView.classList.toggle('filter-active', _currentTab === 'meals' || _currentTab === 'treats');
+    // Keep the category filter in step on first render too (not just showTab)
+    const catSelect = document.getElementById('treat-cat-filter');
+    if (catSelect) catSelect.classList.toggle('hidden', _currentTab === 'summary');
     if (_currentTab === 'meals')   _renderMeals();
     if (_currentTab === 'treats')  _renderTreats();
     if (_currentTab === 'summary') _renderSummary();
@@ -214,15 +216,16 @@ const Planner = (() => {
     _currentTab = tab;
     const filterInput = document.getElementById('planner-recipe-filter');
     if (filterInput) {
-      filterInput.placeholder = tab === 'treats' ? 'Search recipes to add…' : 'Filter recipes…';
+      filterInput.placeholder = tab === 'treats'
+        ? 'Search treats to add…' : 'Search recipes by name or tag…';
       filterInput.value = '';
     }
+    // Category filter now applies to both the meals and treats searches
     const catSelect = document.getElementById('treat-cat-filter');
     if (catSelect) {
       catSelect.value = '';
-      catSelect.classList.toggle('hidden', tab !== 'treats');
+      catSelect.classList.toggle('hidden', tab === 'summary');
     }
-    _recipeFilter = '';
     const resultsEl = document.getElementById('treat-search-results');
     if (resultsEl) { resultsEl.innerHTML = ''; resultsEl.classList.add('hidden'); }
     render();
@@ -231,10 +234,9 @@ const Planner = (() => {
   function _renderMeals() {
     const plan = Data.getPlan();
     const wk   = plan['week' + _currentWeek] || {};
-    const filterLower = _recipeFilter.toLowerCase();
-    const recipes = Data.getRecipes().filter(r =>
-      !filterLower || r.name.toLowerCase().includes(filterLower)
-    );
+    // Slot dropdowns always list every recipe; the search bar is now an
+    // add-to-slot flow rather than a filter over these selects.
+    const recipes = Data.getRecipes();
     const el = document.getElementById('planner-grid');
     if (!el) return;
     el.innerHTML = Data.DAYS.map(day =>
@@ -380,14 +382,101 @@ const Planner = (() => {
       if (_currentTab === 'treats') {
         _renderTreatSearchResults(query);
       } else {
-        _recipeFilter = query;
-        render();
+        _renderMealSearchResults(query);
       }
     }, 200);
   }
 
   function _esc(s) {
     return (s || '').replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  }
+
+  // Shared matcher: name or any tag, optionally constrained to a category
+  function _matchRecipes(query, cat) {
+    const lower = (query || '').toLowerCase();
+    return Data.getRecipes().filter(r => {
+      if (cat && (r.category || '') !== cat) return false;
+      if (!lower) return true;
+      if (r.name.toLowerCase().includes(lower)) return true;
+      const tags = Array.isArray(r.tags) ? r.tags : (r.tags || '').split(',').map(t => t.trim()).filter(Boolean);
+      return tags.some(t => t.toLowerCase().includes(lower));
+    });
+  }
+
+  function _tagChips(r) {
+    const tags = Array.isArray(r.tags) ? r.tags : (r.tags || '').split(',').map(t => t.trim()).filter(Boolean);
+    return tags.slice(0, 3).map(t => `<span class="treat-search-tag">${_esc(t)}</span>`).join('');
+  }
+
+  // Meals tab: type-ahead results; picking one opens a day/meal slot chooser
+  function _renderMealSearchResults(query) {
+    const resultsEl = document.getElementById('treat-search-results');
+    if (!resultsEl) return;
+    const cat = (document.getElementById('treat-cat-filter')?.value || '').trim();
+    if (!query && !cat) {
+      resultsEl.innerHTML = '';
+      resultsEl.classList.add('hidden');
+      return;
+    }
+    const matches = _matchRecipes(query, cat).slice(0, 8);
+    if (matches.length === 0) {
+      resultsEl.innerHTML = `<div class="treat-search-empty">No recipes match</div>`;
+      resultsEl.classList.remove('hidden');
+      return;
+    }
+    resultsEl.innerHTML = matches.map(r =>
+      `<div class="treat-search-result" onclick="Planner.openSlotPicker('${_esc(r.id)}')">
+        <span class="treat-search-name">${_esc(r.name)}</span>
+        <span class="treat-search-meta">${_tagChips(r)}${r.category ? `<span class="treat-search-cat">${_esc(r.category)}</span>` : ''}</span>
+      </div>`
+    ).join('');
+    resultsEl.classList.remove('hidden');
+  }
+
+  function openSlotPicker(recipeId) {
+    const r = Data.getRecipeById(recipeId);
+    if (!r) return;
+    _clearSearch();
+    document.getElementById('modal-content').innerHTML = `
+      <h3>Add to Week ${_currentWeek}</h3>
+      <p style="margin:0 0 12px;color:var(--text-muted);font-size:.9rem">"${_esc(r.name)}"</p>
+      <div class="form-group">
+        <label>Day</label>
+        <select id="slotpick-day">
+          ${Data.DAYS.map(d => `<option value="${d}">${DAY_LABELS[d]}</option>`).join('')}
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Meal</label>
+        <select id="slotpick-meal">
+          ${Data.MEALS.map(m => `<option value="${m}"${m === 'dinner' ? ' selected' : ''}>${MEAL_LABELS[m]}</option>`).join('')}
+        </select>
+      </div>
+      <div class="modal-actions">
+        <button class="btn-secondary" onclick="App.closeModal()">Cancel</button>
+        <button class="btn-primary" onclick="Planner.confirmSlotPick('${_esc(recipeId)}')">Add to plan</button>
+      </div>`;
+    document.getElementById('modal-overlay').classList.remove('hidden');
+  }
+
+  function confirmSlotPick(recipeId) {
+    const day  = document.getElementById('slotpick-day')?.value;
+    const meal = document.getElementById('slotpick-meal')?.value;
+    if (!day || !meal) return;
+    const plan = Data.getPlan();
+    const existing = _normSlot(((plan['week' + _currentWeek] || {})[day] || {})[meal]);
+    Data.setMealSlot(_currentWeek, day, meal, existing.length, recipeId);
+    App.closeModal();
+    render();
+    const r = Data.getRecipeById(recipeId);
+    App.toast(`${r ? r.name : 'Recipe'} added to ${DAY_LABELS[day]} ${MEAL_LABELS[meal].toLowerCase()} ✓`);
+  }
+
+  function _clearSearch() {
+    const filterInput = document.getElementById('planner-recipe-filter');
+    if (filterInput) filterInput.value = '';
+    const resultsEl = document.getElementById('treat-search-results');
+    if (resultsEl) { resultsEl.innerHTML = ''; resultsEl.classList.add('hidden'); }
   }
 
   function _renderTreatSearchResults(query) {
@@ -399,16 +488,7 @@ const Planner = (() => {
       resultsEl.classList.add('hidden');
       return;
     }
-    const lower = query.toLowerCase();
-    const matches = Data.getRecipes()
-      .filter(r => {
-        if (cat && (r.category || '') !== cat) return false;
-        if (!lower) return true;
-        if (r.name.toLowerCase().includes(lower)) return true;
-        const tags = Array.isArray(r.tags) ? r.tags : (r.tags || '').split(',').map(t => t.trim()).filter(Boolean);
-        return tags.some(t => t.toLowerCase().includes(lower));
-      })
-      .slice(0, 8);
+    const matches = _matchRecipes(query, cat).slice(0, 8);
     if (matches.length === 0) {
       resultsEl.innerHTML = `<div class="treat-search-empty">No recipes match</div>`;
       resultsEl.classList.remove('hidden');
@@ -417,7 +497,7 @@ const Planner = (() => {
     resultsEl.innerHTML = matches.map(r =>
       `<div class="treat-search-result" onclick="Planner.addTreatDirect('${_esc(r.id)}')">
         <span class="treat-search-name">${_esc(r.name)}</span>
-        ${r.category ? `<span class="treat-search-cat">${_esc(r.category)}</span>` : ''}
+        <span class="treat-search-meta">${_tagChips(r)}${r.category ? `<span class="treat-search-cat">${_esc(r.category)}</span>` : ''}</span>
       </div>`
     ).join('');
     resultsEl.classList.remove('hidden');
@@ -719,5 +799,6 @@ const Planner = (() => {
            generateShoppingList, filterRecipes,
            openAddTreatModal, confirmAddTreat, removeTreat, updateTreatBatches, addTreatDirect,
            toggleActionMenu, closeActionMenu, openSaveWeekModal, confirmSaveWeek,
-           openSavedPlansModal, applySavedPlan, deleteSavedPlan };
+           openSavedPlansModal, applySavedPlan, deleteSavedPlan,
+           openSlotPicker, confirmSlotPick };
 })();
